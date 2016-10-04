@@ -1,0 +1,48 @@
+This is a simple OpenGL terrain demo, intended as a programming exercise
+and nothing else. The demo showcases water rendering, shadow mapping,
+3D model loading and forward rendering Phong-based lighting.
+
+Build requirements
+------------------------------------
+
+You need the following dependencies installed on your system:
+
+- Glib
+- GLFW3
+- SDL Image (1.2)
+- glm
+- OpenGL
+
+In Ubuntu, these are provided by the following packages:
+
+- Glib:             libglib2.0-dev
+- GLFW3:            libglfw3-dev
+- SDL Image (1.2):  libsdl-image1.2-dev
+- glm:              libglm-dev
+- OpenGL:           Mesa or proprietary driver packages
+
+Bulding and excuting the demo
+-----------------------------------
+
+$ ./autogen.sh
+$ make
+$ cd src/
+$ ./demo
+
+It is important to execute the last command from inside the src/ directory!
+
+Configuration
+-----------------------------------
+
+There are many configurable aspects in the demo, most of these are contained
+inside the main-constants.h file, feel free to edit this to experiment with
+the demo.
+
+You can also tweak the number of objects of each class in main.cpp (look for
+the object_count[] array at the beginning of the file).
+
+Objects are ramdomly positioned on the map. If you want to execute the same
+exact scene multiple times you can edit main.cpp and pass a constant argument
+to srandom().
+
+Enjoy!
