@@ -135,7 +135,7 @@
 /*
  * Water parameters: reflectiveness, distortion, wave speed, etc.
  */
-#define TER_WATER_REFLECTIVENESS 1.5f
+#define TER_WATER_REFLECTIVENESS 0.75f /* Between 0 and 1 */
 #define TER_WATER_DISTORTION 0.015f
 #define TER_WATER_WAVE_SPEED 0.0015f
 
