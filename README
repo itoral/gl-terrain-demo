@@ -41,7 +41,7 @@ the demo.
 You can also tweak the number of objects of each class in main.cpp (look for
 the object_count[] array at the beginning of the file).
 
-Objects are ramdomly positioned on the map. If you want to execute the same
+Objects are randomly positioned on the map. If you want to execute the same
 exact scene multiple times you can edit main.cpp and pass a constant argument
 to srandom().
 
