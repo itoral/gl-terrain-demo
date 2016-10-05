@@ -31,6 +31,9 @@ $ ./demo
 
 It is important to execute the last command from inside the src/ directory!
 
+Once the demo is running you can use the keyboard to move and rotate the
+camera (up, down, left, right, pageup and pagedown).
+
 Configuration
 -----------------------------------
 
