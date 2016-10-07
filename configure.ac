@@ -47,7 +47,7 @@ AM_CONDITIONAL([DEBUG], [test "x$enable_debug" = "xyes"])
 # DEPENDENCIES
 # ----------------------------------------------------------
 
-PKG_CHECK_MODULES(DEPS, glib-2.0 gl glfw3 SDL_image)
+PKG_CHECK_MODULES(DEPS, glib-2.0 gl glfw3 SDL_image glm)
 
 AC_SUBST(DEPS_CFLAGS)
 AC_SUBST(DEPS_LIBS)
