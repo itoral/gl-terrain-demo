@@ -39,7 +39,7 @@
 /*
  * Projection properties
  */
-#define TER_FOV 45.0f /* FIXME: for some reason only 45º seems work... */
+#define TER_FOV 45.0f
 #define TER_ASPECT_RATIO (((float) TER_WIN_WIDTH) / ((float) TER_WIN_HEIGHT))
 #define TER_NEAR_PLANE 0.01f
 #define TER_FAR_PLANE 300.0f

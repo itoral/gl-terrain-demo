@@ -479,11 +479,11 @@ setup_scene()
    load_lights();
 
    /* Projection matrix */
-   Projection = glm::perspective(TER_FOV, TER_ASPECT_RATIO,
+   Projection = glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
                                  TER_NEAR_PLANE, TER_FAR_PLANE);
    ter_cache_set("matrix/Projection", &Projection);
 
-   ProjectionSky = glm::perspective(TER_FOV, TER_ASPECT_RATIO,
+   ProjectionSky = glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
                                     TER_NEAR_PLANE, TER_FAR_PLANE_SKY);
    ter_cache_set("matrix/ProjectionSky", &ProjectionSky);
 

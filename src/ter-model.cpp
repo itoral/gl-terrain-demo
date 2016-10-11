@@ -927,8 +927,9 @@ ter_model_render_prepare(TerModel *model,
     * selected, otherwise distances in the Z buffer are relative to
     * TER_NEAR_PLANE = 0.0f and TER_FAR_PLANE = 1.0f and not to far_plane.
     */
-   glm::mat4 Projection = glm::perspective(TER_FOV, TER_ASPECT_RATIO,
-                                           TER_NEAR_PLANE, render_far_plane);
+   glm::mat4 Projection =
+      glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
+                       TER_NEAR_PLANE, render_far_plane);
 
    glm::mat4 *View = (glm::mat4 *) ter_cache_get("matrix/View");
    glm::mat4 *ViewInv = (glm::mat4 *) ter_cache_get("matrix/ViewInv");
