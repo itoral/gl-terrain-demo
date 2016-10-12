@@ -41,6 +41,10 @@ TerTextureManager *tex_mgr = NULL;
 /* List of shaders */
 GList *shader_list = NULL;
 
+/* Scene FBO */
+TerRenderTexture *scene_ms_fbo = NULL;
+TerRenderTexture *scene_fbo = NULL;
+
 /* Objects to load. For new object types add:
  *
  * - the enum value in TerObjectType
@@ -104,7 +108,7 @@ setup_glfw()
       exit(1);
    }
 
-   glfwWindowHint(GLFW_SAMPLES, TER_MULTISAMPLING_SAMPLES);
+   glfwWindowHint(GLFW_SAMPLES, 0);
    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -478,6 +482,16 @@ setup_scene()
    load_skybox();
    load_lights();
 
+   /* Multi-sampled scene FBO */
+   if (TER_MULTISAMPLING_SAMPLES > 1) {
+      scene_ms_fbo =
+         ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT, false, true);
+   }
+
+   /* Single-sampled scene FBO */
+   scene_fbo =
+      ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT, false, false);
+
    /* Projection matrix */
    Projection = glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
                                  TER_NEAR_PLANE, TER_FAR_PLANE);
@@ -777,21 +791,37 @@ render_2d_tiles()
 static void
 render_result()
 {
-   /* No need to clear the color buffer, we are going to render all pixels */
-   glClear(GL_DEPTH_BUFFER_BIT);
+   TerRenderTexture *fbo = scene_ms_fbo ? scene_ms_fbo : scene_fbo;
 
-   if (TER_DEBUG_SHOW_BOUNDING_BOXES)
-      render_bounding_boxes();
+   /* Render everything to an FBO */
+   ter_render_texture_start(fbo);
 
-   /* The rendering order affects performance, at least on Intel, probably
-    * because of some early Z-kills. Try to render first things that can
-    * be closer to the camera and last things that are further away and/or
-    * more expensive to render.
-    */
-   render_objects(true);
-   ter_terrain_render(terrain, true);
-   ter_water_tile_render(water);
-   ter_skybox_render(skybox);
+      /* No need to clear the color buffer, we are going to render all pixels */
+      glEnable(GL_MULTISAMPLE);
+      glClear(GL_DEPTH_BUFFER_BIT);
+
+      if (TER_DEBUG_SHOW_BOUNDING_BOXES)
+         render_bounding_boxes();
+
+      /* The rendering order affects performance, at least on Intel, probably
+       * because of some early Z-kills. Try to render first things that can
+       * be closer to the camera and last things that are further away and/or
+       * more expensive to render.
+       */
+      render_objects(true);
+      ter_terrain_render(terrain, true);
+      ter_water_tile_render(water);
+      ter_skybox_render(skybox);
+
+      glDisable(GL_MULTISAMPLE);
+   ter_render_texture_start(fbo);
+
+   /* Resolve the multi-sampled FBO */
+   if (scene_ms_fbo)
+      ter_render_texture_blit(scene_ms_fbo, scene_fbo);
+
+   /* Render to the window */
+   ter_render_texture_blit_to_window(scene_fbo, TER_WIN_WIDTH, TER_WIN_HEIGHT);
 }
 
 /**
@@ -1012,6 +1042,10 @@ show_statistics()
 static void
 teardown()
 {
+   if (scene_ms_fbo)
+      ter_render_texture_free(scene_ms_fbo);
+   if (scene_fbo)
+      ter_render_texture_free(scene_fbo);
    ter_object_renderer_free(obj_renderer);
    free_obj_models();
    ter_terrain_free(terrain);

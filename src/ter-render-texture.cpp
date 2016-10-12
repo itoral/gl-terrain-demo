@@ -7,30 +7,55 @@
 #include <GL/gl.h>
 
 TerRenderTexture *
-ter_render_texture_new(int width, int height, bool use_depth_texture)
+ter_render_texture_new(int width, int height,
+                       bool use_depth_texture, bool multisample)
 {
+   /* We don't use depth textures with multisampled fbos */
+   assert(!multisample || !use_depth_texture);
+
+   if (TER_MULTISAMPLING_SAMPLES <= 1)
+      multisample = false;
+
    TerRenderTexture *rt = g_new0(TerRenderTexture, 1);
    rt->width = width;
    rt->height = height;
+   rt->is_multisampled = multisample;
 
    glGenFramebuffers(1, &rt->framebuffer);
    glBindFramebuffer(GL_FRAMEBUFFER, rt->framebuffer);
    glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
    /* Color attachment */
-   glGenTextures(1, &rt->texture);
-   glBindTexture(GL_TEXTURE_2D, rt->texture);
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, 0);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                          GL_TEXTURE_2D, rt->texture, 0);
+   if (!rt->is_multisampled) {
+      glGenTextures(1, &rt->texture);
+      glBindTexture(GL_TEXTURE_2D, rt->texture);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, 0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D, rt->texture, 0);
+   } else {
+      glGenTextures(1, &rt->texture);
+      glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, rt->texture);
+      glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
+                              TER_MULTISAMPLING_SAMPLES,
+                              GL_RGBA8, width, height, true);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D_MULTISAMPLE, rt->texture, 0);
+   }
 
    /* Depth attachment */
    if (!use_depth_texture) {
       glGenRenderbuffers(1, &rt->depthbuffer);
       glBindRenderbuffer(GL_RENDERBUFFER, rt->depthbuffer);
-      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+      if (!rt->is_multisampled) {
+         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,
+                               width, height);
+      } else {
+         glRenderbufferStorageMultisample(GL_RENDERBUFFER,
+                                          TER_MULTISAMPLING_SAMPLES,
+                                          GL_DEPTH_COMPONENT, width, height);
+      }
       glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                                GL_RENDERBUFFER, rt->depthbuffer);
    } else {
@@ -129,4 +154,29 @@ ter_render_texture_stop(TerRenderTexture *rt)
    glBindFramebuffer(GL_FRAMEBUFFER, 0);
    glViewport(rt->prev_viewport[0], rt->prev_viewport[1],
               rt->prev_viewport[2], rt->prev_viewport[3]);
+}
+
+void
+ter_render_texture_blit(TerRenderTexture *src,
+                        TerRenderTexture *dst)
+{
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, src->framebuffer);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->framebuffer);
+   glBlitFramebuffer(0, 0, src->width, src->height,
+                     0, 0, dst->width, dst->height,
+                     GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void
+ter_render_texture_blit_to_window(TerRenderTexture *src,
+                                  unsigned width, unsigned height)
+{
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, src->framebuffer);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+   glDrawBuffer(GL_BACK);
+   glBlitFramebuffer(0, 0, src->width, src->height,
+                     0, 0, width, height,
+                     GL_COLOR_BUFFER_BIT, GL_NEAREST);
+   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

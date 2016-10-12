@@ -81,9 +81,11 @@ ter_water_tile_new(float x0, float z0, float x1, float z1, float h,
    set_vertices(t);
 
    t->reflection = ter_render_texture_new(TER_WATER_REFLECTION_TEX_W,
-                                          TER_WATER_REFLECTION_TEX_H, false);
+                                          TER_WATER_REFLECTION_TEX_H,
+                                          false, false);
    t->refraction = ter_render_texture_new(TER_WATER_REFRACTION_TEX_W,
-                                          TER_WATER_REFRACTION_TEX_H, true);
+                                          TER_WATER_REFRACTION_TEX_H,
+                                          true, false);
    t->dudv_tex = dudv_tex;
    t->normal_tex = normal_tex;
 
