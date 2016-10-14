@@ -108,9 +108,10 @@ ter_render_texture_free(TerRenderTexture *rt)
    if (rt->texture)
       glDeleteTextures(1, &rt->texture);
    if (rt->depth_texture)
-      glDeleteTextures(1, &rt->texture);
+      glDeleteTextures(1, &rt->depth_texture);
    if (rt->depthbuffer)
       glDeleteRenderbuffers(1, &rt->depthbuffer);
+   g_free(rt);
 }
 
 void
