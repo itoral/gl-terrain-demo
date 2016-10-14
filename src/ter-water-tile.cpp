@@ -173,7 +173,7 @@ ter_water_tile_render(TerWaterTile *t)
    TerMaterial material;
    material.diffuse = glm::vec3(0.2f, 0.95f, 0.85f);
    material.ambient = glm::vec3(0.2f, 0.95f, 0.85f);
-   material.specular = glm::vec3(0.2f, 0.6f, 0.6f);
+   material.specular = glm::vec3(0.5f, 0.8f, 0.8f);
    material.shininess = 32.0;
    ter_shader_program_basic_load_material(&sh->basic, &material);
 
