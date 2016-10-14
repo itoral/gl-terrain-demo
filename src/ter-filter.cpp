@@ -94,6 +94,10 @@ ter_postprocess_bind_vao()
 
 static void
 ter_filter_simple_render(unsigned src_tex, TerShaderProgramFilterSimple *sh)
+ __attribute__ ((unused));
+
+static void
+ter_filter_simple_render(unsigned src_tex, TerShaderProgramFilterSimple *sh)
 {
    glUseProgram(sh->prog.program);
 

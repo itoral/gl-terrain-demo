@@ -240,8 +240,8 @@ ter_texture_manager_load_cube(TerTextureManager *manager,
   SDL_Surface *image[6];
 
    for (int i = 0; i < 6; i++) {
-     image[i]= IMG_Load (file[i]);
-     if (!image) {
+     image[i] = IMG_Load(file[i]);
+     if (!image[i]) {
        g_warning ("Texture Manager: Failed to load file '%s'\n", file[i]);
        return 0;
      }

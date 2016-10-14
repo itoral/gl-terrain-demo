@@ -33,13 +33,11 @@ set_vertices(TerWaterTile *t)
    t->vertices = g_new0(glm::vec3, num_vertices);
 
    t->num_vertices = 0;
-   for (int c = 0; c < num_cols - 1; c++) {
-      for (int r = 0; r < num_rows; r++) {
+   for (unsigned c = 0; c < num_cols - 1; c++) {
+      for (unsigned r = 0; r < num_rows; r++) {
          float x = t->x0 + c * t->tile_size;
          float z = t->z0 - r * t->tile_size;
          float y = t->h;
-
-         glm::vec3 v0 = glm::vec3(x, y, z);
 
          /* Strip start. Link up to the next strip using degenerate triangles */
          if (c > 0 && r == 0) {
@@ -57,7 +55,7 @@ set_vertices(TerWaterTile *t)
       }
    }
 
-   assert(t->num_vertices == num_vertices);
+   assert(t->num_vertices == (int) num_vertices);
 }
 
 TerWaterTile *

@@ -108,8 +108,6 @@ skybox_bind_vao(TerSkyBox *b)
 void
 ter_skybox_render(TerSkyBox *b)
 {
-   unsigned loc;
-
    TerShaderProgramSkybox *sh =
       (TerShaderProgramSkybox *) ter_cache_get("program/skybox");
    glUseProgram(sh->basic.prog.program);

@@ -42,6 +42,7 @@ enum {
    LOG_LAST
 };
 
+static void ter_dbg(unsigned channel, const char *s, ...) __attribute__ ((unused));
 #if TER_DEBUG_TRACE_ENABLE
 static void
 ter_dbg(unsigned channel, const char *s, ...)

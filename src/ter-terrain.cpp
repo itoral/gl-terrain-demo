@@ -215,7 +215,7 @@ ter_terrain_build_mesh(TerTerrain *t)
     * (using degenerate triangles) since that yields much better performance
     * than rendering triangles.
     */
-   int num_indices =
+   unsigned num_indices =
       (vertices_w - 1) * (vertices_d * 2) + (vertices_w - 2) + (vertices_d - 2);
    t->indices = g_new0(unsigned, num_indices);
 
@@ -261,7 +261,7 @@ terrain_bind_vao(TerTerrain *t)
       uint8_t *vertex_data = g_new(uint8_t, bytes);
 
       float *vertex_data_f = (float *) vertex_data;
-      for (int i = 0; i < vertex_count; i++) {
+      for (unsigned i = 0; i < vertex_count; i++) {
          memcpy(&vertex_data_f[vertex_float_size * i], &mesh->vertices[i],
                 sizeof(glm::vec3));
          memcpy(&vertex_data_f[vertex_float_size * i + 3], &mesh->normals[i],
@@ -277,7 +277,7 @@ terrain_bind_vao(TerTerrain *t)
       /* Create storage for index buffers and upload that to the first */
       t->ibuf_idx = 0;
       glGenBuffers(TER_TERRAIN_NUM_INDEX_BUFFERS, t->index_buf);
-      for (int i = 0; i < TER_TERRAIN_NUM_INDEX_BUFFERS; i++) {
+      for (unsigned i = 0; i < TER_TERRAIN_NUM_INDEX_BUFFERS; i++) {
          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, t->index_buf[i]);
          glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                       TER_TERRAIN_MAX_IB_BYTES,
@@ -340,8 +340,6 @@ terrain_bind_vao(TerTerrain *t)
 static void
 terrain_prepare(TerTerrain *t, bool enable_shadows)
 {
-   unsigned loc;
-
    TerShaderProgramTerrain *sh = (TerShaderProgramTerrain *)
       (enable_shadows ? ter_cache_get("program/terrain-shadow") :
                         ter_cache_get("program/terrain"));

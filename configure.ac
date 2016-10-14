@@ -27,6 +27,7 @@ AC_HEADER_STDC
 AM_MAINTAINER_MODE
 
 CFLAGS="$CFLAGS -Wall -Werror -Wmissing-prototypes -Wmissing-declarations -std=c99"
+CXXFLAGS="$CXXFLAGS -Wall -Werror -Wmissing-declarations"
 
 # ----------------------------------------------------------
 # DEBUG

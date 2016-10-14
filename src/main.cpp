@@ -225,7 +225,7 @@ free_obj_models()
    }
 }
 
-void
+static void
 load_skybox()
 {
    skybox = ter_skybox_new(2000.0f, TER_TEX_SKY_BOX_01);
@@ -287,15 +287,13 @@ load_objects()
    ter_cache_set("rendering/obj-renderer", obj_renderer);
 
    int max_x = (TER_TERRAIN_VX - 1) * TER_TERRAIN_TILE_SIZE;
-   int min_x = 0.0f;
    int max_z = (TER_TERRAIN_VZ - 1) * TER_TERRAIN_TILE_SIZE;
-   int min_z = 0.0f;
 
    float offset_y = -0.05f;
 
    for (int i = 0; i < TER_OBJECT_TYPE_LAST; i++) {
       OBJ_CONSTRUCTOR constructor = obj_constructors[i];
-      for (int j = 0; j < object_count[i]; j++) {
+      for (unsigned j = 0; j < object_count[i]; j++) {
          float x = random() % max_x;
          float z = -(random() % max_z);
          float y = ter_terrain_get_height_at(terrain, x, z);
@@ -476,7 +474,7 @@ free_lights()
    ter_light_free(light);
 }
 
-void
+static void
 setup_gl()
 {
    glEnable(GL_CULL_FACE);
@@ -888,7 +886,7 @@ render_scene()
    render_2d_tiles();
 }
 
-bool
+static bool
 check_for_camera_collision(TerCamera *cam)
 {
    TerBox *cam_box = ter_camera_get_box(cam);

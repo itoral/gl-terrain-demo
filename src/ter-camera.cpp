@@ -259,9 +259,6 @@ ter_camera_get_clipping_box_for_distance(TerCamera *cam, float dist,
    glm::vec3 f[8];
    compute_frustum_vertices_for_dist(cam, dist, f);
 
-   glm::mat4 inverse_view_matrix =
-      glm::inverse(ter_camera_get_view_matrix(cam));
-
    clip->x0 = f[0].x;
    clip->x1 = f[0].x;
    clip->y0 = f[0].y;

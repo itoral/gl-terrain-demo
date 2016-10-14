@@ -92,7 +92,7 @@ link_program(GLuint vertexShaderID, GLuint fragmentShaderID)
    return programID;
 }
 
-unsigned
+static unsigned
 build_shader_program(const char *vertexFile, const char *fragmentFile)
 {
    GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
@@ -432,7 +432,7 @@ ter_shader_program_model_tex_load_textures(TerShaderProgramModelTex *p,
                                            unsigned num_units)
 {
    assert(num_units < 4);
-   for (int i = 0; i < num_units; i++) {
+   for (unsigned i = 0; i < num_units; i++) {
       glUniform1i(p->tex_diffuse_loc[i], i);
    }
 }
@@ -452,7 +452,7 @@ ter_shader_program_model_load_materials(TerShaderProgramModelData *p,
                                         TerMaterial *materials,
                                         unsigned count)
 {
-   for (int i = 0; i < count; i++) {
+   for (unsigned i = 0; i < count; i++) {
       const TerMaterial &mat = materials[i];
       glUniform3f(p->ambient_loc[i],
                   mat.ambient.r, mat.ambient.g, mat.ambient.b);

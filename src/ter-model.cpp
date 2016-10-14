@@ -39,7 +39,7 @@ model_compute_dimensions(TerModel *m)
    min_x = max_x = m->vertices[0].x;
    min_y = max_y = m->vertices[0].y;
    min_z = max_z = m->vertices[0].z;
-   for (int i = 1; i < m->vertices.size(); i++) {
+   for (unsigned i = 1; i < m->vertices.size(); i++) {
       if (m->vertices[i].x < min_x)
          min_x = m->vertices[i].x;
       else if (m->vertices[i].x > max_x)
@@ -127,7 +127,6 @@ load_materials(const char *path, TerMaterial *materials, unsigned *mat_count,
            "OBJ-LOADER: INFO: loading materials from: '%s'\n", path);
 
    int line = 0;
-   int matches;
    char line_header[512];
    char line_buffer[512];
    char *buffer;
@@ -292,9 +291,8 @@ ter_model_load_obj(const char *path)
    std::vector<glm::vec3> temp_vertices; 
    std::vector<glm::vec2> temp_uvs;
    std::vector<glm::vec3> temp_normals;
-   unsigned mat_count;
    unsigned tids[TER_MODEL_MAX_TEXTURES];
-   unsigned tid_count;
+   unsigned tid_count = 0;
    GHashTable *mat_names = NULL;
    char *base_path = NULL;
    char *suffix = NULL;
@@ -438,7 +436,7 @@ ter_model_load_obj(const char *path)
          }
 
          if (has_materials) {
-            if (cur_material < 0 || cur_material >= m->num_materials) {
+            if (cur_material < 0 || cur_material >= (int) m->num_materials) {
                ter_dbg(LOG_OBJ_LOAD,
                        "OBJ-LOADER: ERROR: bogus current material for vertex mapping "
                        "[line %d]\n", line);
@@ -451,7 +449,7 @@ ter_model_load_obj(const char *path)
             /* If this is a textured model we need to identify the sampler
              * units that will be used with each vertex
              */
-            int sampler_index = 0;
+            unsigned sampler_index = 0;
             for (; sampler_index < tid_count; sampler_index++) {
                if (tids[sampler_index] == m->materials[cur_material].tid) {
                   m->samplers.push_back(sampler_index);
@@ -513,7 +511,7 @@ ter_model_load_obj(const char *path)
    }
 
    m->num_tids = tid_count;
-   for (int i = 0; i < tid_count; i++)
+   for (unsigned i = 0; i < tid_count; i++)
       m->tids[i] = tids[i];
 
    /* Use the base name of the file (without suffix) as the model name */
@@ -588,7 +586,7 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
    unsigned bytes = vert_count * vertex_byte_size;
    uint8_t *vertex_data = g_new(uint8_t, bytes);
 
-   for (int i = 0; i < vert_count; i++) {
+   for (unsigned i = 0; i < vert_count; i++) {
       unsigned offset = 0;
 
       memcpy(&vertex_data[vertex_byte_size * i + offset],
@@ -806,7 +804,7 @@ model_bind_vao(TerModel *model, float *M4x4_list, unsigned num_instances)
       upload_instanced_data_and_bind(model, M4x4_list, num_instances);
       unsigned num_attrs = model_is_textured(model) ?
          NUM_VERTEX_ATTRIBS_TEXTURED : NUM_VERTEX_ATTRIBS_SOLID;
-      for (int i = 0; i < num_attrs; i++)
+      for (unsigned i = 0; i < num_attrs; i++)
          glEnableVertexAttribArray(i);
    }
 }
@@ -821,7 +819,7 @@ model_unbind(TerModel *model)
 
    unsigned num_attrs =  is_textured ?
       NUM_VERTEX_ATTRIBS_TEXTURED : NUM_VERTEX_ATTRIBS_SOLID;
-   for (int i = 0; i < num_attrs; i++)
+   for (unsigned i = 0; i < num_attrs; i++)
       glDisableVertexAttribArray(i);
 
    glBindVertexArray(0);
@@ -966,7 +964,7 @@ ter_model_render_prepare(TerModel *model,
       TER_NEAR_PLANE, clip_far_plane, render_far_plane);
 
    if (!is_solid) {
-      for (int i = 0; i < model->num_tids; i++) {
+      for (unsigned i = 0; i < model->num_tids; i++) {
          glActiveTexture(GL_TEXTURE0 + i);
          glBindTexture(GL_TEXTURE_2D, model->tids[i]);
       }
@@ -1022,7 +1020,7 @@ ter_model_add_variant(TerModel *m, TerMaterial *material, unsigned *tids,
    assert(m->num_materials == count);
    assert(m->num_variants < TER_MODEL_MAX_VARIANTS);
 
-   for (int i = 0; i < count; i++) {
+   for (unsigned i = 0; i < count; i++) {
       m->materials[TER_MODEL_MAX_MATERIALS * m->num_variants + i] = material[i];
       m->tids[TER_MODEL_MAX_TEXTURES * m->num_variants + i] = tids[i];
    }

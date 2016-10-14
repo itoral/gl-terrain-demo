@@ -1,6 +1,7 @@
 #include "ter-box.h"
 #include "ter-util.h"
 
+bool ter_box_is_inside(TerBox *box, glm::vec3 &p) __attribute__ ((unused));
 bool
 ter_box_is_inside(TerBox *box, glm::vec3 &p)
 {
