@@ -284,6 +284,32 @@
 #define TER_SHADOW_UPDATE_INTERVAL 1
 
 /*
+ * Enable the bloom filter
+ */
+#define TER_BLOOM_FILTER_ENABLE true
+
+/*
+ * How much we down scale the blur image with respect to the original
+ * resolution of the scene. The value should be in the range (0.0, 1.0].
+ * The lower the value the more blur we get and the more intense the bloom
+ * effect becomes.
+ */
+#define TER_BLOOM_BLUR_SCALE    0.2f
+
+/*
+ * Bloom luminance factor
+ *
+ * Smaller values make the bloom brightness filter less selective, leading to
+ * more pixels being selected for the bloom effect.
+ *
+ * Basically, if L is the luminance of a particular pixel this produces
+ * pixel * L^TER_BLOOM_LUMINANCE_FACTOR. Since L values are in the range
+ * [0, 1], the larger the value, the smaller the intensity of the output
+ * pixel, leading to a less intense bloom effect.
+ */
+#define TER_BLOOM_LUMINANCE_FACTOR 3.0f
+
+/*
  * Virtual texture IDs
  */
 #define TER_TEX_TERRAIN_HEIGHTMAP_01    0

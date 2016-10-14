@@ -227,4 +227,48 @@ TerShaderProgramBox *ter_shader_program_box_new();
 void ter_shader_program_box_load_MVP(TerShaderProgramBox *p,
                                      glm::mat4 *MVP);
 
+typedef struct {
+   TerShaderProgram prog;
+   unsigned texture_loc;
+} TerShaderProgramFilterSimple;
+
+TerShaderProgramFilterSimple *ter_shader_program_filter_simple_new(
+   const char *vs, const char *fs);
+
+void ter_shader_program_filter_simple_load(
+   TerShaderProgramFilterSimple *p, unsigned unit);
+
+typedef struct {
+   TerShaderProgramFilterSimple simple;
+   unsigned lum_factor_loc;
+} TerShaderProgramFilterBrightnessSelect;
+
+TerShaderProgramFilterBrightnessSelect *
+ter_shader_program_filter_brightness_select_new(const char *vs, const char *fs);
+
+void ter_shader_program_filter_brightness_select_load(
+   TerShaderProgramFilterBrightnessSelect *p, unsigned unit, float lum_factor);
+
+typedef struct {
+   TerShaderProgramFilterSimple simple;
+   unsigned dim_loc;
+} TerShaderProgramFilterBlur;
+
+TerShaderProgramFilterBlur *ter_shader_program_filter_blur_new(
+   const char *vs, const char *fs);
+
+void ter_shader_program_filter_blur_load(
+   TerShaderProgramFilterBlur *p, unsigned unit, unsigned dim);
+
+typedef struct {
+   TerShaderProgramFilterSimple simple;
+   unsigned texture2_loc;
+} TerShaderProgramFilterCombine;
+
+TerShaderProgramFilterCombine *ter_shader_program_filter_combine_new(
+   const char *vs, const char *fs);
+
+void ter_shader_program_filter_combine_load(
+   TerShaderProgramFilterCombine *p, unsigned unit0, unsigned unit1);
+
 #endif

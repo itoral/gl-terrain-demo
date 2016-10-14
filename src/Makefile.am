@@ -22,7 +22,8 @@ demo_SOURCES = \
     ter-box.cpp \
     ter-texture.cpp \
     ter-render-texture.cpp \
-    ter-sky-box.cpp
+    ter-sky-box.cpp \
+    ter-filter.cpp
 
 demo_CFLAGS = \
     -DPREFIX=$(prefix) \

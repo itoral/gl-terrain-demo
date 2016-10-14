@@ -6,12 +6,15 @@ typedef struct {
    int prev_viewport[4];
    unsigned framebuffer;
    unsigned texture;
+   bool has_depth;
    unsigned depthbuffer;
    unsigned depth_texture;
    bool is_multisampled;
 } TerRenderTexture;
 
 TerRenderTexture *ter_render_texture_new(int width, int height,
+                                         bool clamp_to_edge,
+                                         bool needs_depth,
                                          bool use_depth_texture,
                                          bool multisample);
 

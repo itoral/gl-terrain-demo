@@ -603,3 +603,92 @@ ter_shader_program_box_load_MVP(TerShaderProgramBox *p, glm::mat4 *MVP)
 {
    glUniformMatrix4fv(p->mvp_loc, 1, GL_FALSE, &(*MVP)[0][0]);
 }
+
+static void
+init_filter_simple(TerShaderProgramFilterSimple *p, unsigned programID)
+{
+   init_program(&p->prog, programID);
+   p->texture_loc = glGetUniformLocation(programID, "Tex");
+}
+
+TerShaderProgramFilterSimple *
+ter_shader_program_filter_simple_new(const char *vs, const char *fs)
+{
+   unsigned programID = build_shader_program(vs, fs);
+
+   TerShaderProgramFilterSimple *p = g_new0(TerShaderProgramFilterSimple, 1);
+   init_filter_simple(p, programID);
+   return p;
+}
+
+void
+ter_shader_program_filter_simple_load(TerShaderProgramFilterSimple *p,
+                                      unsigned unit)
+{
+   glUniform1i(p->texture_loc, unit);
+}
+
+TerShaderProgramFilterBrightnessSelect *
+ter_shader_program_filter_brightness_select_new(const char *vs, const char *fs)
+{
+   unsigned programID = build_shader_program(vs, fs);
+
+   TerShaderProgramFilterBrightnessSelect *p =
+      g_new0(TerShaderProgramFilterBrightnessSelect, 1);
+   init_filter_simple(&p->simple, programID);
+
+   p->lum_factor_loc = glGetUniformLocation(programID, "LuminanceFactor");
+
+   return p;
+}
+
+void
+ter_shader_program_filter_brightness_select_load(
+   TerShaderProgramFilterBrightnessSelect *p,
+   unsigned unit, float lum_factor)
+{
+   glUniform1i(p->simple.texture_loc, unit);
+   glUniform1f(p->lum_factor_loc, lum_factor);
+}
+
+TerShaderProgramFilterBlur *
+ter_shader_program_filter_blur_new(const char *vs, const char *fs)
+{
+   unsigned programID = build_shader_program(vs, fs);
+
+   TerShaderProgramFilterBlur *p = g_new0(TerShaderProgramFilterBlur, 1);
+   init_filter_simple(&p->simple, programID);
+
+   p->dim_loc = glGetUniformLocation(programID, "Dim");
+
+   return p;
+}
+
+void
+ter_shader_program_filter_blur_load(TerShaderProgramFilterBlur *p,
+                                    unsigned unit, unsigned dim)
+{
+   glUniform1i(p->simple.texture_loc, unit);
+   glUniform1f(p->dim_loc, (float) dim);
+}
+
+TerShaderProgramFilterCombine *
+ter_shader_program_filter_combine_new(const char *vs, const char *fs)
+{
+   unsigned programID = build_shader_program(vs, fs);
+
+   TerShaderProgramFilterCombine *p = g_new0(TerShaderProgramFilterCombine, 1);
+   init_filter_simple(&p->simple, programID);
+
+   p->texture2_loc = glGetUniformLocation(programID, "Tex2");
+
+   return p;
+}
+
+void
+ter_shader_program_filter_combine_load(TerShaderProgramFilterCombine *p,
+                                       unsigned unit0, unsigned unit1)
+{
+   glUniform1i(p->simple.texture_loc, unit0);
+   glUniform1i(p->texture2_loc, unit1);
+}

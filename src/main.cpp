@@ -45,6 +45,9 @@ GList *shader_list = NULL;
 TerRenderTexture *scene_ms_fbo = NULL;
 TerRenderTexture *scene_fbo = NULL;
 
+/* Bloom filter */
+TerBloomFilter *bloom_filter = NULL;
+
 /* Objects to load. For new object types add:
  *
  * - the enum value in TerObjectType
@@ -391,6 +394,27 @@ load_shaders()
    /* Bounding box */
    sh = ter_shader_program_box_new();
    add_shader("program/box", sh);
+
+   /* Bloom - brightness */
+   sh = ter_shader_program_filter_brightness_select_new(
+      "../shaders/bloom-brightness.vert",
+      "../shaders/bloom-brightness.frag");
+   add_shader("program/bloom-brightness", sh);
+
+   /* Bloom - horizontal blur */
+   sh = ter_shader_program_filter_blur_new("../shaders/bloom-hblur.vert",
+                                           "../shaders/bloom-blur.frag");
+   add_shader("program/bloom-hblur", sh);
+
+   /* Bloom - vertical blur */
+   sh = ter_shader_program_filter_blur_new("../shaders/bloom-vblur.vert",
+                                           "../shaders/bloom-blur.frag");
+   add_shader("program/bloom-vblur", sh);
+
+   /* Bloom - combine */
+   sh = ter_shader_program_filter_combine_new("../shaders/bloom-combine.vert",
+                                              "../shaders/bloom-combine.frag");
+   add_shader("program/bloom-combine", sh);
 }
 
 static void
@@ -485,12 +509,18 @@ setup_scene()
    /* Multi-sampled scene FBO */
    if (TER_MULTISAMPLING_SAMPLES > 1) {
       scene_ms_fbo =
-         ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT, false, true);
+         ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT,
+                                true, true, false, true);
    }
 
    /* Single-sampled scene FBO */
    scene_fbo =
-      ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT, false, false);
+      ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT,
+                             true, false, false, false);
+
+   /* Bloom filter */
+   if (TER_BLOOM_FILTER_ENABLE)
+      bloom_filter = ter_bloom_filter_new();
 
    /* Projection matrix */
    Projection = glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
@@ -820,8 +850,16 @@ render_result()
    if (scene_ms_fbo)
       ter_render_texture_blit(scene_ms_fbo, scene_fbo);
 
+   /* Post-processing */
+   fbo = scene_fbo;
+   if (bloom_filter) {
+      glDisable(GL_DEPTH_TEST);
+      fbo = ter_bloom_filter_run(bloom_filter, scene_fbo);
+      glEnable(GL_DEPTH_TEST);
+   }
+
    /* Render to the window */
-   ter_render_texture_blit_to_window(scene_fbo, TER_WIN_WIDTH, TER_WIN_HEIGHT);
+   ter_render_texture_blit_to_window(fbo, TER_WIN_WIDTH, TER_WIN_HEIGHT);
 }
 
 /**
@@ -1046,6 +1084,8 @@ teardown()
       ter_render_texture_free(scene_ms_fbo);
    if (scene_fbo)
       ter_render_texture_free(scene_fbo);
+   if (bloom_filter)
+      ter_bloom_filter_free(bloom_filter);
    ter_object_renderer_free(obj_renderer);
    free_obj_models();
    ter_terrain_free(terrain);

@@ -38,6 +38,7 @@
 #include "ter-shadow-map.h"
 #include "ter-shadow-box.h"
 #include "ter-shadow-renderer.h"
+#include "ter-filter.h"
 
 #include "main-constants.h"
 
