@@ -253,7 +253,7 @@
  * decrease shadow quality. Too small values can make relatively
  * close obects not cast a shadow.
  */
-#define TER_SHADOW_DISTANCE 40.0f
+#define TER_SHADOW_DISTANCE 50.0f
 
 /* Shadow map resolution. Shadow quality increases with size.
  */
@@ -321,7 +321,7 @@ TER_SHADOW_CSM_MAP_SIZES[4] = { 1.0f, 0.75f, 0.5f, 0.0f };
  * Indicates how often should the shadow map be updated. A value of 1 is
  * the most demanding (update every frame).
  */
-#define TER_SHADOW_UPDATE_INTERVAL 1
+#define TER_SHADOW_UPDATE_INTERVAL 2
 
 /*
  * Enable the bloom filter
