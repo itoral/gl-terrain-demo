@@ -11,7 +11,7 @@
  *
  * So we use two buffers that are twice the size of the worse case scenario.
  */
-#define TER_TERRAIN_NUM_INDEX_BUFFERS 2
+#define TER_TERRAIN_NUM_INDEX_BUFFERS 3
 #define TER_TERRAIN_MAX_IB_BYTES (((TER_TERRAIN_VX - 1) * (TER_TERRAIN_VZ * 2) + (TER_TERRAIN_VX - 2) + (TER_TERRAIN_VZ - 2)) * sizeof(unsigned) * 2)
 #define TER_TERRAIN_MAX_IB_INDICES (TER_TERRAIN_MAX_IB_BYTES / sizeof(unsigned))
 
