@@ -111,9 +111,9 @@ calculate_light_space_frustum_vertex(TerShadowBox *sb,
 static void
 calculate_frustum_vertices(TerShadowBox *sb,
                            glm::mat4 &rot_matrix,
-                           glm::vec3 forward_vector,
-                           glm::vec3 center_near,
-                           glm::vec3 center_far)
+                           glm::vec3 &forward_vector,
+                           glm::vec3 &center_near,
+                           glm::vec3 &center_far)
 {
    glm::vec3 up_vector = vec3(rot_matrix * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f));
    glm::vec3 right_vector = glm::cross(forward_vector, up_vector);
