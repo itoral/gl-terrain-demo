@@ -11,6 +11,9 @@ typedef struct {
    glm::vec3 clip_center;
    float clip_w, clip_h, clip_d;
    bool rendered;
+   TerTerrain *terrain;
+   TerObjectRenderer *obj_renderer;
+   unsigned level;
 } ShadowRendererRenderData;
 
 TerShadowRenderer *
@@ -19,8 +22,6 @@ ter_shadow_renderer_new(TerLight *light, TerCamera *camera)
    TerShadowRenderer *sr = g_new0(TerShadowRenderer, 1);
    sr->light = light;
    sr->shadow_box = ter_shadow_box_new(light, camera);
-   sr->shadow_map =
-      ter_shadow_map_new(TER_SHADOW_MAP_SIZE, TER_SHADOW_MAP_SIZE);
    return sr;
 }
 
@@ -28,16 +29,15 @@ void
 ter_shadow_renderer_free(TerShadowRenderer *sr)
 {
    ter_shadow_box_free(sr->shadow_box);
-   ter_shadow_map_free(sr->shadow_map);
    g_free(sr);
 }
 
 static glm::mat4
-compute_light_projection_matrix(TerShadowRenderer *sr)
+compute_light_projection_matrix(TerShadowRenderer *sr, int level)
 {
-   float w = ter_shadow_box_get_width(sr->shadow_box);
-   float h = ter_shadow_box_get_height(sr->shadow_box);
-   float d = ter_shadow_box_get_depth(sr->shadow_box);
+   float w = ter_shadow_box_get_width(sr->shadow_box, level);
+   float h = ter_shadow_box_get_height(sr->shadow_box, level);
+   float d = ter_shadow_box_get_depth(sr->shadow_box, level);
 
    glm::mat4 m(1.0f);
    m[0][0] =  2.0f / w;
@@ -49,7 +49,7 @@ compute_light_projection_matrix(TerShadowRenderer *sr)
 }
 
 static glm::mat4
-compute_light_view_matrix(TerShadowRenderer *sr, glm::vec3 dir, glm::vec3 pos)
+compute_light_view_matrix(glm::vec3 dir, glm::vec3 pos)
 {
    glm::mat4 view(1.0f);
 
@@ -67,25 +67,29 @@ compute_light_view_matrix(TerShadowRenderer *sr, glm::vec3 dir, glm::vec3 pos)
 }
 
 static void
-render_start(TerShadowRenderer *sr)
+render_start(TerShadowRenderer *sr, int level)
 {
    glm::vec3 light_pos = vec3(ter_light_get_world_position(sr->light));
    glm::vec3 light_dir = -light_pos;
 
-   sr->LightProjection = compute_light_projection_matrix(sr);
-   sr->LightView = compute_light_view_matrix(sr, light_dir,
-      ter_shadow_box_get_center(sr->shadow_box));
+   sr->LightProjection[level] = compute_light_projection_matrix(sr, level);
+   sr->LightView[level] = compute_light_view_matrix(light_dir,
+      ter_shadow_box_get_center(sr->shadow_box, level));
 
    glEnable(GL_DEPTH_TEST);
 
-   ter_render_texture_start(sr->shadow_map->map);
+   TerShadowMap *shadow_map =
+      ter_shadow_box_get_shadow_map(sr->shadow_box, level);
+   ter_render_texture_start(shadow_map->map);
    glClear(GL_DEPTH_BUFFER_BIT);
 }
 
 static void
-render_stop(TerShadowRenderer *sr)
+render_stop(TerShadowRenderer *sr, int level)
 {
-   ter_render_texture_stop(sr->shadow_map->map);
+   TerShadowMap *shadow_map =
+      ter_shadow_box_get_shadow_map(sr->shadow_box, level);
+   ter_render_texture_stop(shadow_map->map);
    glBindVertexArray(0);
    glDisableVertexAttribArray(0);
 }
@@ -145,7 +149,7 @@ render_object_set(const char * key, GList *set, void *data)
    glUseProgram(sh->prog.program);
 
    ter_shader_program_shadow_map_load_VP(sh,
-      &sr->LightProjection, &sr->LightView);
+      &sr->LightProjection[d->level], &sr->LightView[d->level]);
 
    glm::vec3 cc = d->clip_center;
    unsigned num_clipped = 0;
@@ -215,8 +219,11 @@ render_terrain(TerTerrain *t, ShadowRendererRenderData *data)
    glEnableVertexAttribArray(0);
 
    glm::mat4 Model = glm::mat4(1.0);
-   ter_shader_program_shadow_map_load_MVP(sh,
-      &data->sr->LightProjection, &data->sr->LightView, &Model);
+   ter_shader_program_shadow_map_load_MVP(
+      sh,
+      &data->sr->LightProjection[data->level],
+      &data->sr->LightView[data->level],
+      &Model);
 
    /* With static lighting we only render the shadow map once, so don't clip
     * anything: we want to render everything.
@@ -228,7 +235,8 @@ render_terrain(TerTerrain *t, ShadowRendererRenderData *data)
       glm::vec3 clip_center;
       float clip_w, clip_h, clip_d;
       ter_shadow_box_get_clipping_box(data->sr->shadow_box, &clip_center,
-                                      &clip_w, &clip_h, &clip_d);
+                                      &clip_w, &clip_h, &clip_d,
+                                      data->level);
       TerClipVolume clip;
       clip.x0 = clip_center.x - clip_w;
       clip.x1 = clip_center.x + clip_w;
@@ -247,6 +255,40 @@ render_terrain(TerTerrain *t, ShadowRendererRenderData *data)
    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+static void
+render_shadow_map_level(TerShadowRenderer *sr,
+                        ShadowRendererRenderData *data)
+{
+   int level = data->level;
+
+   ter_shadow_box_get_clipping_box(sr->shadow_box, &data->clip_center,
+                                   &data->clip_w, &data->clip_h, &data->clip_d,
+                                   level);
+
+   ter_dbg(LOG_RENDER,
+           "SHADOW-RENDERER: INFO: level: %d, "
+           "cuboid size: %.1f x %.1f x %.1f\n",
+           level,
+           ter_shadow_box_get_width(sr->shadow_box, level),
+           ter_shadow_box_get_depth(sr->shadow_box, level),
+           ter_shadow_box_get_height(sr->shadow_box, level));
+
+   render_start(sr, level);
+
+   /* Terrain shadows are very prone to shadow acne on the terrain surface.
+    * To prevent that we have to increase the shadow acne factor in the
+    * terrain shader (which offsets shadows casts by models, so it is not
+    * great) or increase the resolution of the shadow map and/or its depth
+    * and/or the PFC.
+    */
+   render_terrain(data->terrain, data);
+
+   g_hash_table_foreach(data->obj_renderer->sets,
+                        (GHFunc) render_object_set, data);
+
+   render_stop(sr, level);
+}
+
 /*
  * Renders the scene objects (only the vertices) to a shadow map using the 
  * the shadow-map shader.
@@ -254,55 +296,43 @@ render_terrain(TerTerrain *t, ShadowRendererRenderData *data)
 bool
 ter_shadow_renderer_render(TerShadowRenderer *sr)
 {
+   ter_shadow_box_update(sr->shadow_box);
+
    TerObjectRenderer *obj_renderer =
       (TerObjectRenderer *) ter_cache_get("rendering/obj-renderer");
 
-   TerTerrain *terrain = (TerTerrain *) ter_cache_get("models/terrain");
+   TerTerrain *terrain =
+      (TerTerrain *) ter_cache_get("models/terrain");
 
    TerShaderProgramShadowMap *sh =
       (TerShaderProgramShadowMap *) ter_cache_get("program/shadow-map");
+
    TerShaderProgramShadowMap *sh_instanced =
       (TerShaderProgramShadowMap *) ter_cache_get("program/shadow-map-instanced");
-
-   ter_shadow_box_update(sr->shadow_box);
 
    ShadowRendererRenderData data;
    data.sr = sr;
    data.sh = sh;
    data.sh_instanced = sh_instanced;
    data.rendered = true;
+   data.terrain = terrain;
+   data.obj_renderer = obj_renderer;
 
-   ter_shadow_box_get_clipping_box(sr->shadow_box, &data.clip_center,
-                                   &data.clip_w, &data.clip_h, &data.clip_d);
-
-   ter_dbg(LOG_RENDER,
-           "SHADOW-RENDERER: INFO: cuboid size: %.1f x %.1f x %.1f\n",
-           ter_shadow_box_get_width(sr->shadow_box),
-           ter_shadow_box_get_depth(sr->shadow_box),
-           ter_shadow_box_get_height(sr->shadow_box));
- 
-   render_start(sr);
-
-   /* Terrain shadows are very prone to shadow acne on the terrain surface.
-    * To prevent that we have to increase the shadow acne factor in the terrain
-    * shader (which offsets shadows casts by models, so it is not great) or
-    * increase the resolution of the shadow map and/or its depth and/or the PFC.
-    */
-   render_terrain(terrain, &data);
-
-   g_hash_table_foreach(obj_renderer->sets, (GHFunc) render_object_set, &data);
-
-   render_stop(sr);
+   for (unsigned level = 0; level < sr->shadow_box->csm_levels; level++) {
+      data.level = level;
+      render_shadow_map_level(sr, &data);
+   }
 
    return data.rendered;
 }
 
 glm::mat4
-ter_shadow_renderer_get_shadow_map_space_vp(TerShadowRenderer *sr)
+ter_shadow_renderer_get_shadow_map_space_vp(TerShadowRenderer *sr,
+                                            unsigned level)
 {
    glm::mat4 offset(1.0f);
    offset = glm::translate(offset, glm::vec3(0.5f, 0.5f, 0.5f));
    offset = glm::scale(offset, glm::vec3(0.5f, 0.5f, 0.5f));
-   return offset * sr->LightProjection * sr->LightView;
+   return offset * sr->LightProjection[level] * sr->LightView[level];
 }
 

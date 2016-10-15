@@ -7,6 +7,7 @@
 
 #include "ter-light.h"
 #include "ter-util.h"
+#include "ter-shadow-renderer.h"
 
 typedef struct {
    unsigned program;
@@ -82,10 +83,12 @@ void ter_shader_program_basic_load_clip_plane(TerShaderProgramBasic *p,
                                               const glm::vec4 plane);
 
 typedef struct {
-   unsigned shadow_map_space_vp_loc;
-   unsigned shadow_map_loc;
+   unsigned shadow_map_space_vp_loc[TER_MAX_CSM_LEVELS];
+   unsigned shadow_map_loc[TER_MAX_CSM_LEVELS];
+   unsigned shadow_csm_end_loc[TER_MAX_CSM_LEVELS];
+   unsigned shadow_map_size_loc[TER_MAX_CSM_LEVELS];
+   unsigned shadow_num_csm_levels_loc;
    unsigned shadow_distance_loc;
-   unsigned shadow_map_size_loc;
    unsigned shadow_pfc_loc;
 } TerShaderProgramShadowData;
 
@@ -95,6 +98,10 @@ void ter_shader_program_shadow_data_load(TerShaderProgramShadowData *p,
                                          float shadow_map_size,
                                          int shadow_pfc,
                                          unsigned shadow_map_sampler_unit);
+
+void ter_shader_program_shadow_data_load_(TerShaderProgramShadowData *p,
+                                          TerShadowRenderer *sr,
+                                          unsigned unit);
 
 typedef struct {
    TerShaderProgramBasic basic;

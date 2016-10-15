@@ -1,9 +1,12 @@
 #version 330 core
 
+const int CSM_LEVELS = 4;
+
 /* Inputs */
 in vec4 vs_pos;
 in vec3 vs_normal;
-in vec4 vs_shadow_map_uv;
+in vec4 vs_shadow_map_uv[CSM_LEVELS];
+in float vs_dist_from_camera;
 in float vs_visibility;
 
 /* Uniforms */
@@ -21,8 +24,10 @@ uniform float MaterialShininess;
 uniform sampler2D SamplerTerrain;
 uniform float SamplerCoordDivisor;
 
-uniform sampler2DShadow ShadowMap;
-uniform float ShadowMapSize;
+uniform sampler2DShadow ShadowMap[CSM_LEVELS];
+uniform float ShadowCSMEndClipSpace[CSM_LEVELS];
+uniform float ShadowMapSize[CSM_LEVELS];
+uniform int ShadowCSMLevels;
 uniform int ShadowPFC;
 const float ShadowAcneBias = 0.002;
 
@@ -31,24 +36,44 @@ uniform vec3 SkyColor;
 /* Outputs */
 out vec4 fs_color;
 
+float sample_shadow_map(int level, vec3 shadow_coords)
+{
+   /* Can't use non-uniform expressions with sampler arrays :-( */
+   if (level == 0)
+      return texture(ShadowMap[0], shadow_coords);
+   else if (level == 1)
+      return texture(ShadowMap[1], shadow_coords);
+   else if (level == 2)
+      return texture(ShadowMap[2], shadow_coords);
+
+   return texture(ShadowMap[3], shadow_coords);
+}
+
 float compute_shadow_factor(float dp)
 {
-   float kernel_size = ShadowPFC * 2.0 + 1.0;
-   float num_samples =  kernel_size * kernel_size;
-   float texel_size = 1.0 / ShadowMapSize;
-   float shadowed_texels = 0.0;
-   float bias = ShadowAcneBias * tan(acos(dp));
-   float ref_dist = vs_shadow_map_uv.z - bias;
+   for (int level = 0; level < CSM_LEVELS; level++) {
+      if (vs_dist_from_camera <= ShadowCSMEndClipSpace[level]) {
+         float kernel_size = ShadowPFC * 2.0 + 1.0;
+         float num_samples =  kernel_size * kernel_size;
+         float texel_size = 1.0 / ShadowMapSize[level];
+         float shadowed_texels = 0.0;
+         float bias = ShadowAcneBias * tan(acos(dp));
+         float ref_dist = vs_shadow_map_uv[level].z - bias;
 
-   for (int x = -ShadowPFC; x <= ShadowPFC; x++) {
-      for (int y = -ShadowPFC; y <= ShadowPFC; y++) {
-         vec3 shadow_coords =
-            vec3(vs_shadow_map_uv.xy + vec2(x, y) * texel_size, ref_dist);
-         shadowed_texels += texture(ShadowMap, shadow_coords);         
+         for (int x = -ShadowPFC; x <= ShadowPFC; x++) {
+            for (int y = -ShadowPFC; y <= ShadowPFC; y++) {
+               vec3 shadow_coords =
+                  vec3(vs_shadow_map_uv[level].xy + vec2(x, y) * texel_size, ref_dist);
+               shadowed_texels += sample_shadow_map(level, shadow_coords);
+            }
+         }
+
+         return 1.0 - shadowed_texels / num_samples * vs_shadow_map_uv[level].w;
       }
    }
 
-   return 1.0 - shadowed_texels / num_samples * vs_shadow_map_uv.w;
+   /* Fragment outside shadow map, no shadowing */
+   return 1.0;
 }
 
 void main()

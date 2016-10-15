@@ -3,16 +3,63 @@
 #include <glib.h>
 #include <math.h>
 
+/* This offset is added to the shadow frustum in order to make sure
+ * that tall shadow casters are kept in the shadow volume and they
+ * are not clipped away while they are still casting visible shadows
+ */
 #define OFFSET 15.0f
 
+/*
+ * Computes the sizes of each CSM level */
 static void
 calculate_dimensions(TerShadowBox *sb)
 {
    float t = tanf(DEG_TO_RAD(TER_FOV));
-   sb->far_width = TER_SHADOW_DISTANCE * t;
-   sb->near_width = TER_NEAR_PLANE * t;
-   sb->far_height = sb->far_width / TER_ASPECT_RATIO;
-   sb->near_height = sb->near_width / TER_ASPECT_RATIO;
+
+   /* The asserts below implement a few sanity checks to ensure that the CSM
+    * has been configured properly:
+    * 1. Maximum number of CSM values is 4.
+    * 2. Last level distance must be 1
+    * 3. All distance values in (0, 1]
+    * 4. All distance values strictly increasing.
+    */
+   assert(TER_SHADOW_CSM_NUM_LEVELS >= 1 &&
+          TER_SHADOW_CSM_NUM_LEVELS <= 4);
+   sb->csm_levels = TER_SHADOW_CSM_NUM_LEVELS;
+
+   assert(TER_SHADOW_CSM_DISTANCES[sb->csm_levels - 1] == 1.0f);
+
+   for (unsigned i = 0; i < sb->csm_levels; i++) {
+      assert(TER_SHADOW_CSM_DISTANCES[i] > 0.0f &&
+             TER_SHADOW_CSM_DISTANCES[i] <= 1.0f);
+      assert(i == 0 ||
+             TER_SHADOW_CSM_DISTANCES[i] > TER_SHADOW_CSM_DISTANCES[i - 1]);
+
+      sb->csm[i].far_dist = TER_SHADOW_DISTANCE * TER_SHADOW_CSM_DISTANCES[i];
+      sb->csm[i].near_dist =
+         (i == 0) ? TER_NEAR_PLANE : sb->csm[i - 1].far_dist;
+      sb->csm[i].far_width = sb->csm[i].far_dist * t;
+      sb->csm[i].near_width = sb->csm[i].near_dist * t;
+      sb->csm[i].far_height = sb->csm[i].far_width / TER_ASPECT_RATIO;
+      sb->csm[i].near_height = sb->csm[i].near_width / TER_ASPECT_RATIO;
+   }
+}
+
+/* Allocates the shadow map texture for each level
+ *
+ * Shadow maps are high-res depth textures and rendering to them is expensive
+ * (specially the inital clear, at least on Intel). By lowering the size
+ * of some of the levels we can gain some performance at the expense
+ * of losing some quality (at the distances covered by these levels).
+ */
+static void
+create_shadow_maps(TerShadowBox *sb)
+{
+   for (unsigned i = 0; i < sb->csm_levels; i++) {
+      float size = TER_SHADOW_MAP_SIZE * TER_SHADOW_CSM_MAP_SIZES[i];
+      assert(size > 0.0f);
+      sb->csm[i].shadow_map = ter_shadow_map_new(size, size);
+   }
 }
 
 TerShadowBox *
@@ -22,51 +69,67 @@ ter_shadow_box_new(TerLight *light, TerCamera *camera)
    sb->light_view_matrix = ter_light_get_view_matrix(light);
    sb->camera = camera;
    calculate_dimensions(sb);
+   create_shadow_maps(sb);
    return sb;
 }
 
 void
 ter_shadow_box_free(TerShadowBox *sb)
 {
+   for (unsigned i = 0; i < sb->csm_levels; i++)
+      ter_shadow_map_free(sb->csm[i].shadow_map);
    g_free(sb);
 }
 
 float
-ter_shadow_box_get_width(TerShadowBox *sb)
+ter_shadow_box_get_width(TerShadowBox *sb, int l)
 {
-   return sb->maxX - sb->minX;
+   return sb->csm[l].maxX - sb->csm[l].minX;
 }
 
 float
-ter_shadow_box_get_height(TerShadowBox *sb)
+ter_shadow_box_get_height(TerShadowBox *sb, int l)
 {
-   return sb->maxY - sb->minY;
+   return sb->csm[l].maxY - sb->csm[l].minY;
 }
 
 float
-ter_shadow_box_get_depth(TerShadowBox *sb)
+ter_shadow_box_get_depth(TerShadowBox *sb, int l)
 {
-   return sb->maxZ - sb->minZ;
+   return sb->csm[l].maxZ - sb->csm[l].minZ;
 }
 
+/* Gets the center (in world cooridnates) of the shadow volume for a particular
+ * CSM level. We use this to compute the clipping volume for the level and also
+ * to position the volume and also to compute the ortographic projection of the
+ * volume when we render the shadow map.
+ */
 glm::vec3
-ter_shadow_box_get_center(TerShadowBox *sb)
+ter_shadow_box_get_center(TerShadowBox *sb, int l)
 {
-   float x  = (sb->minX + sb->maxX) / 2.0f;
-   float y  = (sb->minY + sb->maxY) / 2.0f;
-   float z  = (sb->minZ + sb->maxZ) / 2.0f;
+   TerShadowBoxLevel *lvl = &sb->csm[l];
+
+   float x  = (lvl->minX + lvl->maxX) / 2.0f;
+   float y  = (lvl->minY + lvl->maxY) / 2.0f;
+   float z  = (lvl->minZ + lvl->maxZ) / 2.0f;
    glm::vec4 center(x, y, z, 1.0f);
    glm::mat4 inverse_light_view_matrix = glm::inverse(sb->light_view_matrix);
    glm::vec4 center_world_space = inverse_light_view_matrix * center;
    return vec3(center_world_space);
 }
 
+/* Computes the an axis-aligned clipping volume for a particular CSM
+ * level in world coordinates.
+ */
 void
 ter_shadow_box_get_clipping_box(TerShadowBox *sb,
-                                glm::vec3 *c, float *w, float *h, float *d)
+                                glm::vec3 *c, float *w, float *h, float *d,
+                                int l)
 {
+   TerShadowBoxLevel *lvl = &sb->csm[l];
+
    glm::mat4 inverse_light_view_matrix = glm::inverse(sb->light_view_matrix);
-   glm::vec4 v = inverse_light_view_matrix * vec4(sb->frustum[0], 1.0);
+   glm::vec4 v = inverse_light_view_matrix * vec4(lvl->frustum[0], 1.0);
 
    float x0 = v.x;
    float x1 = v.x;
@@ -74,8 +137,9 @@ ter_shadow_box_get_clipping_box(TerShadowBox *sb,
    float y1 = v.y;
    float z0 = v.z;
    float z1 = v.z;
+
    for (int i = 1; i < 8; i++) {
-      v = inverse_light_view_matrix * vec4(sb->frustum[i], 1.0);
+      v = inverse_light_view_matrix * vec4(lvl->frustum[i], 1.0);
       if (v.x < x0)
          x0 = v.x;
       else if (v.x > x1)
@@ -92,10 +156,14 @@ ter_shadow_box_get_clipping_box(TerShadowBox *sb,
          z1 = v.z;
    }
 
-   *c = ter_shadow_box_get_center(sb);
-   *w = (x1 - x0) / 2.0f + OFFSET;
-   *h = (y1 - y0) / 2.0f + OFFSET;
-   *d = (z1 - z0) / 2.0f + OFFSET;
+   *c = ter_shadow_box_get_center(sb, l);
+   *w = (x1 - x0) / 2.0f;
+   *h = (y1 - y0) / 2.0f;
+   *d = (z1 - z0) / 2.0f;
+
+   *w += OFFSET;
+   *h += OFFSET;
+   *d += OFFSET;
 }
 
 static glm::vec3
@@ -110,6 +178,7 @@ calculate_light_space_frustum_vertex(TerShadowBox *sb,
 
 static void
 calculate_frustum_vertices(TerShadowBox *sb,
+                           TerShadowBoxLevel *l,
                            glm::mat4 &rot_matrix,
                            glm::vec3 &forward_vector,
                            glm::vec3 &center_near,
@@ -120,51 +189,132 @@ calculate_frustum_vertices(TerShadowBox *sb,
    glm::vec3 down_vector = -up_vector;
    glm::vec3 left_vector = -right_vector;
 
-   glm::vec3 far_top = center_far + up_vector * sb->far_height;
-   glm::vec3 far_bottom = center_far + down_vector * sb->far_height;
-   glm::vec3 near_top = center_near + up_vector * sb->near_height;
-   glm::vec3 near_bottom = center_near + down_vector * sb->near_height;
+   glm::vec3 far_top = center_far + up_vector * l->far_height;
+   glm::vec3 far_bottom = center_far + down_vector * l->far_height;
+   glm::vec3 near_top = center_near + up_vector * l->near_height;
+   glm::vec3 near_bottom = center_near + down_vector * l->near_height;
 
-   sb->frustum[0] =
-      calculate_light_space_frustum_vertex(sb, far_top, right_vector, sb->far_width);
-   sb->frustum[1] =
-      calculate_light_space_frustum_vertex(sb, far_top, left_vector, sb->far_width);
-   sb->frustum[2] =
-      calculate_light_space_frustum_vertex(sb, far_bottom, right_vector, sb->far_width);
-   sb->frustum[3] =
-      calculate_light_space_frustum_vertex(sb, far_bottom, left_vector, sb->far_width);
-   sb->frustum[4] =
-      calculate_light_space_frustum_vertex(sb, near_top, right_vector, sb->near_width);
-   sb->frustum[5] =
-      calculate_light_space_frustum_vertex(sb, near_top, left_vector, sb->near_width);
-   sb->frustum[6] =
-      calculate_light_space_frustum_vertex(sb, near_bottom, right_vector, sb->near_width);
-   sb->frustum[7] =
-      calculate_light_space_frustum_vertex(sb, near_bottom, left_vector, sb->near_width);
+   l->frustum[0] =
+      calculate_light_space_frustum_vertex(sb, far_top,
+                                           right_vector, l->far_width);
+   l->frustum[1] =
+      calculate_light_space_frustum_vertex(sb, far_top,
+                                           left_vector, l->far_width);
+   l->frustum[2] =
+      calculate_light_space_frustum_vertex(sb, far_bottom,
+                                           right_vector, l->far_width);
+   l->frustum[3] =
+      calculate_light_space_frustum_vertex(sb, far_bottom,
+                                           left_vector, l->far_width);
+   l->frustum[4] =
+      calculate_light_space_frustum_vertex(sb, near_top,
+                                           right_vector, l->near_width);
+   l->frustum[5] =
+      calculate_light_space_frustum_vertex(sb, near_top,
+                                           left_vector, l->near_width);
+   l->frustum[6] =
+      calculate_light_space_frustum_vertex(sb, near_bottom,
+                                           right_vector, l->near_width);
+   l->frustum[7] =
+      calculate_light_space_frustum_vertex(sb, near_bottom,
+                                           left_vector, l->near_width);
+}
+
+static void
+shadow_box_update_dim(TerShadowBox *sb, TerShadowBoxLevel *l,
+                      glm::mat4 &rot_matrix, glm::vec3 &forward_vector)
+{
+   glm::vec3 to_far = forward_vector * l->far_dist;
+   glm::vec3 to_near = forward_vector * l->near_dist;
+
+   glm::vec3 center_near = sb->camera->pos + to_near;
+   glm::vec3 center_far = sb->camera->pos + to_far;
+
+   calculate_frustum_vertices(sb, l, rot_matrix, forward_vector,
+                              center_near, center_far);
 }
 
 static void
 calculate_static_frustum_vertices(TerShadowBox *sb)
 {
-   sb->frustum[0] =
-      vec3(sb->light_view_matrix * glm::vec4(TER_FAR_PLANE, TER_FAR_PLANE, -TER_FAR_PLANE, 1.0f));
-   sb->frustum[1] =
-      vec3(sb->light_view_matrix * glm::vec4(0.0f, TER_FAR_PLANE, -TER_FAR_PLANE, 1.0f));
-   sb->frustum[2] =
-      vec3(sb->light_view_matrix * glm::vec4(TER_FAR_PLANE, -30.0f, -TER_FAR_PLANE, 1.0f));
-   sb->frustum[3] =
-      vec3(sb->light_view_matrix * glm::vec4(0.0f, -30.0f, -TER_FAR_PLANE, 1.0f));
+   float size = TER_FAR_PLANE / sb->csm_levels;
+   float t = tanf(DEG_TO_RAD(TER_FOV));
 
-   sb->frustum[4] =
-      vec3(sb->light_view_matrix * glm::vec4(TER_FAR_PLANE, TER_FAR_PLANE, 0.0f, 1.0f));
-   sb->frustum[5] =
-      vec3(sb->light_view_matrix * glm::vec4(0.0f, TER_FAR_PLANE, 0.0f, 1.0f));
-   sb->frustum[6] =
-      vec3(sb->light_view_matrix * glm::vec4(TER_FAR_PLANE, -TER_FAR_PLANE, 0.0f, 1.0f));
-   sb->frustum[7] =
-      vec3(sb->light_view_matrix * glm::vec4(0.0f, -TER_FAR_PLANE, 0.0f, 1.0f));
+   /* Since the static frustum is much larger we also need to
+    * compute CSM slices
+    */
+   for (unsigned i = 0; i < sb->csm_levels; i++) {
+      TerShadowBoxLevel *l = &sb->csm[i];
+      l->near_dist =
+         (i == 0) ? TER_NEAR_PLANE : sb->csm[i - 1].far_dist;
+      l->far_dist = l->near_dist + size;
+      l->far_width = l->far_dist * t;
+      l->near_width = l->near_dist * t;
+      l->far_height = l->far_width / TER_ASPECT_RATIO;
+      l->near_height = l->near_width / TER_ASPECT_RATIO;
+
+      float near = size * i;
+      float far = near + size;
+      l->frustum[0] =
+         vec3(sb->light_view_matrix * glm::vec4(far, far, -far, 1.0f));
+      l->frustum[1] =
+         vec3(sb->light_view_matrix * glm::vec4(near, far, -far, 1.0f));
+      l->frustum[2] =
+         vec3(sb->light_view_matrix * glm::vec4(far, -30.0f, -far, 1.0f));
+      l->frustum[3] =
+         vec3(sb->light_view_matrix * glm::vec4(near, -30.0f, -far, 1.0f));
+
+      l->frustum[4] =
+         vec3(sb->light_view_matrix * glm::vec4(far, far, -near, 1.0f));
+      l->frustum[5] =
+         vec3(sb->light_view_matrix * glm::vec4(near, far, -near, 1.0f));
+      l->frustum[6] =
+         vec3(sb->light_view_matrix * glm::vec4(far, -30.0f, -near, 1.0f));
+      l->frustum[7] =
+         vec3(sb->light_view_matrix * glm::vec4(near, -30.0f, -near, 1.0f));
+   }
 }
 
+static void
+update_dimensions_from_frustum(TerShadowBoxLevel *l)
+{
+   l->minX = l->frustum[0].x;
+   l->maxX = l->frustum[0].x;
+   l->minY = l->frustum[0].y;
+   l->maxY = l->frustum[0].y;
+   l->minZ = l->frustum[0].z;
+   l->maxZ = l->frustum[0].z;
+
+   for (int i = 1; i < 8; i++) {
+      if (l->frustum[i].x > l->maxX)
+         l->maxX = l->frustum[i].x;
+      else if (l->frustum[i].x < l->minX)
+         l->minX = l->frustum[i].x;
+
+      if (l->frustum[i].y > l->maxY)
+         l->maxY = l->frustum[i].y;
+      else if (l->frustum[i].y < l->minY)
+         l->minY = l->frustum[i].y;
+
+      if (l->frustum[i].z > l->maxZ)
+         l->maxZ = l->frustum[i].z;
+      else if (l->frustum[i].z < l->minZ)
+         l->minZ = l->frustum[i].z;
+   }
+
+   l->maxZ += OFFSET;
+   l->minZ -= OFFSET;
+
+   l->maxX += OFFSET;
+   l->minX -= OFFSET;
+
+   l->maxY += OFFSET;
+   l->minY -= OFFSET;
+}
+
+/* Re-computes the size and orientation of the shadow volume for all
+ * CSM levels.
+ */
 void
 ter_shadow_box_update(TerShadowBox *sb)
 {
@@ -174,47 +324,31 @@ ter_shadow_box_update(TerShadowBox *sb)
       glm::vec3 forward_vector =
          vec3(rot_matrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f));
 
-      glm::vec3 to_far = forward_vector * TER_SHADOW_DISTANCE;
-      glm::vec3 to_near = forward_vector * TER_NEAR_PLANE;
-
-      glm::vec3 center_near = sb->camera->pos + to_near;
-      glm::vec3 center_far = sb->camera->pos + to_far;
-
-      calculate_frustum_vertices(sb, rot_matrix, forward_vector,
-                                 center_near, center_far);
+      for (unsigned i = 0; i < sb->csm_levels; i++) {
+         shadow_box_update_dim(sb, &sb->csm[i], rot_matrix, forward_vector);
+         update_dimensions_from_frustum(&sb->csm[i]);
+      }
    } else {
       calculate_static_frustum_vertices(sb);
+      for (unsigned i = 0; i < sb->csm_levels; i++)
+         update_dimensions_from_frustum(&sb->csm[i]);
    }
+}
 
-   sb->minX = sb->frustum[0].x;
-   sb->maxX = sb->frustum[0].x;
-   sb->minY = sb->frustum[0].y;
-   sb->maxY = sb->frustum[0].y;
-   sb->minZ = sb->frustum[0].z;
-   sb->maxZ = sb->frustum[0].z;
-   for (int i = 1; i < 8; i++) {
-      if (sb->frustum[i].x > sb->maxX)
-         sb->maxX = sb->frustum[i].x;
-      else if (sb->frustum[i].x < sb->minX)
-         sb->minX = sb->frustum[i].x;
+TerShadowMap *
+ter_shadow_box_get_shadow_map(TerShadowBox *sb, int l)
+{
+   return sb->csm[l].shadow_map;
+}
 
-      if (sb->frustum[i].y > sb->maxY)
-         sb->maxY = sb->frustum[i].y;
-      else if (sb->frustum[i].y < sb->minY)
-         sb->minY = sb->frustum[i].y;
+float
+ter_shadow_box_get_far_distance(TerShadowBox *sb, int l)
+{
+   return sb->csm[l].far_dist;
+}
 
-      if (sb->frustum[i].z > sb->maxZ)
-         sb->maxZ = sb->frustum[i].z;
-      else if (sb->frustum[i].z < sb->minZ)
-         sb->minZ = sb->frustum[i].z;
-   }
-
-   sb->maxZ += OFFSET;
-   sb->minZ -= OFFSET;
-
-   sb->maxX += OFFSET;
-   sb->minX -= OFFSET;
-
-   sb->maxY += OFFSET;
-   sb->minY -= OFFSET;
+float
+ter_shadow_box_get_map_size(TerShadowBox *sb, int l)
+{
+   return sb->csm[l].shadow_map->map->width;
 }

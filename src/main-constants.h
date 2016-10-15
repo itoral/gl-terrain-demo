@@ -259,6 +259,46 @@
  */
 #define TER_SHADOW_MAP_SIZE  (4.0f * 1024.0f)
 
+/* Number of Cascade Shadow Mapping levels to use. Between 1 (just a single
+ * level, so no cascade) and 4 (the maximum supported).
+ */
+#define TER_SHADOW_CSM_NUM_LEVELS 3
+
+/* Distances covered by each shadow map cascade level. Distances are expressed
+ * as a percentage (between 0 and 1) of TER_SHADOW_DISTANCE.
+ *
+ * - The last level (index TER_SHADOW_CSM_NUM_LEVELS - 1) must be 1.0, so we
+ * cover all of TER_SHADOW_DISTANCE.
+ * - All distances should be stricly larger than 0.
+ * - Each level should cover a strictly larger distance than the previous.
+ *
+ * The code has assertions to verify these rules.
+ *
+ * This default setup looks like this:
+ *
+ *      NearPlane                    SHADOW_DIST
+ *          [------|------|------|------]
+ * csm[0]   ^^^^^^^^^^ 35%
+ * csm[1]             ^^^^^^^^^^ 70%
+ * csm[2]                       ^^^^^^^^ 100%
+ *
+ * Notice that the shadow frustum is larger the further from the near plane
+ * so evenly splitting the limit shadow distance between the levels does not
+ * mean that they both use an equally sized shadow volumes.
+ */
+static float __attribute__ ((unused))
+TER_SHADOW_CSM_DISTANCES[4] = { 0.35f, 0.7f, 1.0f, 0.0f };
+
+
+/* Size of the shadow map for each CSM level. As a percentage (between 0 and 1)
+ * of TER_SHADOW_MAP_SIZE.
+ *
+ * This setup favours quality of shadows that are close to the camera at the
+ * expense of reducing resolution for more distant shadows.
+ */
+static float __attribute__ ((unused))
+TER_SHADOW_CSM_MAP_SIZES[4] = { 1.0f, 0.75f, 0.5f, 0.0f };
+
 /* Number of samples for shadow antialiasing:
  *
  * Num. samples = (ShadowPFC * 2.0 + 1.0)^2

@@ -552,8 +552,10 @@ setup_scene()
    tile = ter_tile_new(tw, th, tw, TER_WIN_HEIGHT - th,
                        water->refraction->texture);
    ter_cache_set("tile/tile-water-refraction", tile);
+   TerShadowMap *shadow_map =
+      ter_shadow_box_get_shadow_map(shadow_renderer->shadow_box, 0);
    tile = ter_tile_new(tw, th, 2 * tw, TER_WIN_HEIGHT - th,
-                       shadow_renderer->shadow_map->map->depth_texture);
+                       shadow_map->map->depth_texture);
    ter_cache_set("tile/tile-shadow-map", tile);
 }
 

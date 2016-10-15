@@ -374,13 +374,12 @@ terrain_prepare(TerTerrain *t, bool enable_shadows)
    if (enable_shadows) {
       TerShadowRenderer *sr =
          (TerShadowRenderer *) ter_cache_get("rendering/shadow-renderer");
-      glm::mat4 ShadowMapSpaceVP =
-         ter_shadow_renderer_get_shadow_map_space_vp(sr);
-      glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, sr->shadow_map->map->depth_texture);
-      ter_shader_program_shadow_data_load(
-         &sh->shadow, &ShadowMapSpaceVP, TER_SHADOW_DISTANCE,
-         TER_SHADOW_MAP_SIZE, TER_SHADOW_PFC, 1);
+      for (unsigned level = 0; level < sr->shadow_box->csm_levels; level++) {
+         glActiveTexture(GL_TEXTURE1 + level);
+         glBindTexture(GL_TEXTURE_2D,
+                       sr->shadow_box->csm[level].shadow_map->map->depth_texture);
+      }
+      ter_shader_program_shadow_data_load_(&sh->shadow, sr, 1);
    }
 
    terrain_bind_vao(t);

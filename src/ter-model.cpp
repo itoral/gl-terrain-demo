@@ -951,13 +951,14 @@ ter_model_render_prepare(TerModel *model,
       int shadow_map_sampler_unit = is_solid ? 0 : 4;
       TerShadowRenderer *sr =
          (TerShadowRenderer *) ter_cache_get("rendering/shadow-renderer");
-      glm::mat4 ShadowMapSpaceVP =
-         ter_shadow_renderer_get_shadow_map_space_vp(sr);
-      glActiveTexture(GL_TEXTURE0 + shadow_map_sampler_unit);
-      glBindTexture(GL_TEXTURE_2D, sr->shadow_map->map->depth_texture);
-      ter_shader_program_shadow_data_load(
-         sh_shadow, &ShadowMapSpaceVP, TER_SHADOW_DISTANCE,
-         TER_SHADOW_MAP_SIZE, shadow_pfc, shadow_map_sampler_unit);
+
+      for (unsigned level = 0; level < sr->shadow_box->csm_levels; level++) {
+         glActiveTexture(GL_TEXTURE0 + shadow_map_sampler_unit + level);
+         glBindTexture(GL_TEXTURE_2D,
+                       sr->shadow_box->csm[level].shadow_map->map->depth_texture);
+      }
+      ter_shader_program_shadow_data_load_(sh_shadow, sr,
+                                           shadow_map_sampler_unit);
    }
 
    ter_shader_program_model_load_near_far_planes(&sh_model->model,

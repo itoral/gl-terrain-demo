@@ -275,29 +275,44 @@ ter_shader_program_basic_load_clip_plane(TerShaderProgramBasic *p,
 }
 
 void
-ter_shader_program_shadow_data_load(TerShaderProgramShadowData *p,
-                                    const glm::mat4 *vp,
-                                    float shadow_distance,
-                                    float shadow_map_size,
-                                    int shadow_pfc,
-                                    unsigned shadow_map_sampler_unit)
+ter_shader_program_shadow_data_load_(TerShaderProgramShadowData *p,
+                                     TerShadowRenderer *sr,
+                                     unsigned unit)
 {
-   glUniformMatrix4fv(p->shadow_map_space_vp_loc, 1, GL_FALSE, &(*vp)[0][0]);
-   glUniform1f(p->shadow_distance_loc, shadow_distance);
-   glUniform1f(p->shadow_map_size_loc, shadow_map_size);
-   glUniform1i(p->shadow_pfc_loc, shadow_pfc);
-   glUniform1i(p->shadow_map_loc, shadow_map_sampler_unit);
+   for (unsigned level = 0; level < sr->shadow_box->csm_levels; level++) {
+      glm::mat4 vp = ter_shadow_renderer_get_shadow_map_space_vp(sr, level);
+      glUniformMatrix4fv(p->shadow_map_space_vp_loc[level],
+                         1, GL_FALSE, &vp[0][0]);
+      glUniform1f(p->shadow_csm_end_loc[level],
+                  ter_shadow_box_get_far_distance(sr->shadow_box, level));
+      glUniform1i(p->shadow_map_loc[level], unit + level);
+      glUniform1f(p->shadow_map_size_loc[level],
+                  ter_shadow_box_get_map_size(sr->shadow_box, level));
+   }
+   glUniform1i(p->shadow_num_csm_levels_loc, sr->shadow_box->csm_levels);
+   glUniform1f(p->shadow_distance_loc, TER_SHADOW_DISTANCE);
+   glUniform1i(p->shadow_pfc_loc, TER_SHADOW_PFC);
 }
 
 static void
 init_shadow_data(TerShaderProgramShadowData *p, unsigned programID)
 {
-   p->shadow_map_space_vp_loc =
-      glGetUniformLocation(programID, "ShadowMapSpaceViewProjection");
+   for (int level = 0; level < TER_MAX_CSM_LEVELS; level++) {
+      char name[64];
+      sprintf(name, "ShadowMapSpaceViewProjection[%d]", level);
+      p->shadow_map_space_vp_loc[level] =
+         glGetUniformLocation(programID, name);
+      sprintf(name, "ShadowMap[%d]", level);
+      p->shadow_map_loc[level] = glGetUniformLocation(programID, name);
+      sprintf(name, "ShadowCSMEndClipSpace[%d]", level);
+      p->shadow_csm_end_loc[level] = glGetUniformLocation(programID, name);
+      sprintf(name, "ShadowMapSize[%d]", level);
+      p->shadow_map_size_loc[level] = glGetUniformLocation(programID, name);
+   }
+   p->shadow_num_csm_levels_loc =
+      glGetUniformLocation(programID, "ShadowCSMLevels");
    p->shadow_distance_loc = glGetUniformLocation(programID, "ShadowDistance");
-   p->shadow_map_size_loc = glGetUniformLocation(programID, "ShadowMapSize");
    p->shadow_pfc_loc = glGetUniformLocation(programID, "ShadowPFC");   
-   p->shadow_map_loc = glGetUniformLocation(programID, "ShadowMap");
 }
 
 TerShaderProgramTerrain *

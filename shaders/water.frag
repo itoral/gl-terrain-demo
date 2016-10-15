@@ -1,12 +1,15 @@
 #version 330 core
 
+const int CSM_LEVELS = 4;
+
 /* Inputs */
 in vec4 vs_pos;
 in vec2 vs_uv;
 in vec4 vs_clip_pos;
 in vec3 vs_camera_vector;
 in float vs_visibility;
-in vec4 vs_shadow_map_uv;
+in vec4 vs_shadow_map_uv[CSM_LEVELS];
+in float vs_dist_from_camera;
 
 /* Uniforms */
 uniform mat4 ViewInv;
@@ -34,8 +37,10 @@ uniform sampler2D DepthTex;
 uniform float NearPlane;
 uniform float FarPlane;
 
-uniform sampler2DShadow ShadowMap;
-uniform float ShadowMapSize;
+uniform sampler2DShadow ShadowMap[CSM_LEVELS];
+uniform float ShadowCSMEndClipSpace[CSM_LEVELS];
+uniform float ShadowMapSize[CSM_LEVELS];
+uniform int ShadowCSMLevels;
 uniform int ShadowPFC;
 const float ShadowDistortionDivisor = 5.0;
 
@@ -44,18 +49,59 @@ uniform vec3 SkyColor;
 /* Outputs */
 out vec4 fs_color;
 
+float sample_shadow_map(int level, vec3 shadow_coords)
+{
+   /* Can't use non-uniform expressions with sampler arrays :-( */
+   if (level == 0)
+      return texture(ShadowMap[0], shadow_coords);
+   else if (level == 1)
+      return texture(ShadowMap[1], shadow_coords);
+   else if (level == 2)
+      return texture(ShadowMap[2], shadow_coords);
+
+   return texture(ShadowMap[3], shadow_coords);
+}
+
 /*
  * We don't use an acne bias for the shadows with the water because
- * the water itseld does not cat a shadow, so there should be no
+ * the water itself does not cast a shadow, so there should be no
  * acne at all.
  */
+float compute_shadow_factor(vec2 distortion)
+{
+   for (int level = 0; level < CSM_LEVELS; level++) {
+      if (vs_dist_from_camera <= ShadowCSMEndClipSpace[level]) {
+         float kernel_size = ShadowPFC * 2.0 + 1.0;
+         float num_samples =  kernel_size * kernel_size;
+         float texel_size = 1.0 / ShadowMapSize[level];
+         float shadowed_texels = 0.0;
+         float ref_dist = vs_shadow_map_uv[level].z;
+
+         /* Apply a small distortion to the shadow on the water */
+         vec2 distorted_coords = vs_shadow_map_uv[level].xy + distortion * 0.5;
+
+         for (int x = -ShadowPFC; x <= ShadowPFC; x++) {
+            for (int y = -ShadowPFC; y <= ShadowPFC; y++) {
+               vec3 shadow_coords =
+                  vec3(distorted_coords + vec2(x, y) * texel_size, ref_dist);
+               shadowed_texels += sample_shadow_map(level, shadow_coords);
+            }
+         }
+
+         return 1.0 - shadowed_texels / num_samples * vs_shadow_map_uv[level].w;
+      }
+   }
+
+   /* Fragment outside shadow map, no shadowing */
+   return 1.0;
+}
+/*
 float compute_shadow_factor(vec2 distortion)
 {
    float kernel_size = ShadowPFC * 2.0 + 1.0;
    float num_samples =  kernel_size * kernel_size;
    float texel_size = 1.0 / ShadowMapSize;
 
-   /* Apply a small distortion to the shadow on the water */
    vec2 distorted_coords = vs_shadow_map_uv.xy + distortion * 0.5;
 
    float shadowed_texels = 0.0;
@@ -70,7 +116,7 @@ float compute_shadow_factor(vec2 distortion)
 
    return 1.0 - shadowed_texels / num_samples * vs_shadow_map_uv.w;
 }
-
+*/
 void main()
 {
    /* ========== Compute lightning parameters ============ */

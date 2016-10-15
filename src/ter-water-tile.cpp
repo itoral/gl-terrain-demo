@@ -195,13 +195,12 @@ ter_water_tile_render(TerWaterTile *t)
 
    TerShadowRenderer *sr =
       (TerShadowRenderer *) ter_cache_get("rendering/shadow-renderer");
-   glm::mat4 ShadowMapSpaceVP =
-      ter_shadow_renderer_get_shadow_map_space_vp(sr);
-   glActiveTexture(GL_TEXTURE5);
-   glBindTexture(GL_TEXTURE_2D, sr->shadow_map->map->depth_texture);
-   ter_shader_program_shadow_data_load(
-      &sh->shadow, &ShadowMapSpaceVP, TER_SHADOW_DISTANCE,
-      TER_SHADOW_MAP_SIZE, TER_SHADOW_PFC, 5);
+   for (unsigned level = 0; level < sr->shadow_box->csm_levels; level++) {
+      glActiveTexture(GL_TEXTURE5 + level);
+      glBindTexture(GL_TEXTURE_2D,
+                    sr->shadow_box->csm[level].shadow_map->map->depth_texture);
+   }
+   ter_shader_program_shadow_data_load_(&sh->shadow, sr, 5);
 
    glEnable(GL_BLEND);
    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
