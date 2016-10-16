@@ -514,7 +514,7 @@ setup_scene()
    /* Single-sampled scene FBO */
    scene_fbo =
       ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT,
-                             true, false, false, false);
+                             true, scene_ms_fbo ? false : true, false, false);
 
    /* Bloom filter */
    if (TER_BLOOM_FILTER_ENABLE)
