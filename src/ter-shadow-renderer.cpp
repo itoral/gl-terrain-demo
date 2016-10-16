@@ -161,12 +161,8 @@ render_object_set(const char * key, GList *set, void *data)
          continue;
       }
 
-      /* If rendering static lighting we render the full shadow map
-       * just once, so we don't want to clip anything.
-       */
       if (TER_SHADOW_RENDERER_ENABLE_CLIPPING &&
-          TER_OBJECT_RENDERER_ENABLE_CLIPPING &&
-          TER_DYNAMIC_LIGHT_ENABLE) {
+          TER_OBJECT_RENDERER_ENABLE_CLIPPING) {
          /* Don't render objects outside the shadow map clip volume */
          if (can_be_clipped(o, cc, d->clip_w, d->clip_h, d->clip_d)) {
             iter = g_list_next(iter);
@@ -225,13 +221,9 @@ render_terrain(TerTerrain *t, ShadowRendererRenderData *data)
       &data->sr->LightView[data->level],
       &Model);
 
-   /* With static lighting we only render the shadow map once, so don't clip
-    * anything: we want to render everything.
-    */
    size_t buffer_offset = 0;
    if (TER_SHADOW_RENDERER_ENABLE_CLIPPING &&
-       TER_TERRAIN_ENABLE_CLIPPING &&
-       TER_DYNAMIC_LIGHT_ENABLE) {
+       TER_TERRAIN_ENABLE_CLIPPING) {
       glm::vec3 clip_center;
       float clip_w, clip_h, clip_d;
       ter_shadow_box_get_clipping_box(data->sr->shadow_box, &clip_center,

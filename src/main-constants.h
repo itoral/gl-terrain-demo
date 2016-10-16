@@ -231,10 +231,9 @@
  *
  * Moves the light source continuously around the scene.
  *
- * If disabled, the shadow map is computed just once in the first frame
- * using a large shadow clipping volume (which reduces a bit shadow quality).
- * Static lighting significantly increases performance, since shadow map
- * computations are expensive.
+ * If disabled, we take advantage of the fact that shadows are static to
+ * fix the rate at which we re-compute the shadow maps to just once every
+ * 30 frames, which is a relevant performance boost.
  */
 #define TER_DYNAMIC_LIGHT_ENABLE true
 
@@ -243,6 +242,16 @@
  * (only applies if dynamic light is enabled)
  */
 #define TER_DYNAMIC_LIGHT_SPEED 0.15f
+
+/*
+ * Shadow map update interval (in frames)
+ *
+ * Indicates how often should the shadow map be updated. A value of 1 is
+ * the most demanding (update every frame).
+ *
+ * Only applies if dynamic light is enabled.
+ */
+#define TER_SHADOW_UPDATE_INTERVAL 2
 
 /*
  * Enable shadow map clipping (at shadow distance)
@@ -314,14 +323,6 @@ TER_SHADOW_CSM_MAP_SIZES[4] = { 1.0f, 0.75f, 0.5f, 0.0f };
  * the water).
  */
 #define TER_SHADOW_PFC_WATER 0
-
-/*
- * Shadow map update interval (in frames)
- *
- * Indicates how often should the shadow map be updated. A value of 1 is
- * the most demanding (update every frame).
- */
-#define TER_SHADOW_UPDATE_INTERVAL 2
 
 /*
  * Enable the bloom filter

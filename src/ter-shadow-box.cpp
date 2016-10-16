@@ -235,47 +235,6 @@ shadow_box_update_dim(TerShadowBox *sb, TerShadowBoxLevel *l,
 }
 
 static void
-calculate_static_frustum_vertices(TerShadowBox *sb)
-{
-   float size = TER_FAR_PLANE / sb->csm_levels;
-   float t = tanf(DEG_TO_RAD(TER_FOV));
-
-   /* Since the static frustum is much larger we also need to
-    * compute CSM slices
-    */
-   for (unsigned i = 0; i < sb->csm_levels; i++) {
-      TerShadowBoxLevel *l = &sb->csm[i];
-      l->near_dist =
-         (i == 0) ? TER_NEAR_PLANE : sb->csm[i - 1].far_dist;
-      l->far_dist = l->near_dist + size;
-      l->far_width = l->far_dist * t;
-      l->near_width = l->near_dist * t;
-      l->far_height = l->far_width / TER_ASPECT_RATIO;
-      l->near_height = l->near_width / TER_ASPECT_RATIO;
-
-      float near = size * i;
-      float far = near + size;
-      l->frustum[0] =
-         vec3(sb->light_view_matrix * glm::vec4(far, far, -far, 1.0f));
-      l->frustum[1] =
-         vec3(sb->light_view_matrix * glm::vec4(near, far, -far, 1.0f));
-      l->frustum[2] =
-         vec3(sb->light_view_matrix * glm::vec4(far, -30.0f, -far, 1.0f));
-      l->frustum[3] =
-         vec3(sb->light_view_matrix * glm::vec4(near, -30.0f, -far, 1.0f));
-
-      l->frustum[4] =
-         vec3(sb->light_view_matrix * glm::vec4(far, far, -near, 1.0f));
-      l->frustum[5] =
-         vec3(sb->light_view_matrix * glm::vec4(near, far, -near, 1.0f));
-      l->frustum[6] =
-         vec3(sb->light_view_matrix * glm::vec4(far, -30.0f, -near, 1.0f));
-      l->frustum[7] =
-         vec3(sb->light_view_matrix * glm::vec4(near, -30.0f, -near, 1.0f));
-   }
-}
-
-static void
 update_dimensions_from_frustum(TerShadowBoxLevel *l)
 {
    l->minX = l->frustum[0].x;
@@ -318,20 +277,14 @@ update_dimensions_from_frustum(TerShadowBoxLevel *l)
 void
 ter_shadow_box_update(TerShadowBox *sb)
 {
-   if (TER_DYNAMIC_LIGHT_ENABLE) {
-      /* The GL camera looks at -Z */
-      glm::mat4 rot_matrix = ter_camera_get_rotation_matrix(sb->camera);
-      glm::vec3 forward_vector =
-         vec3(rot_matrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f));
+   /* The GL camera looks at -Z */
+   glm::mat4 rot_matrix = ter_camera_get_rotation_matrix(sb->camera);
+   glm::vec3 forward_vector =
+      vec3(rot_matrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f));
 
-      for (unsigned i = 0; i < sb->csm_levels; i++) {
-         shadow_box_update_dim(sb, &sb->csm[i], rot_matrix, forward_vector);
-         update_dimensions_from_frustum(&sb->csm[i]);
-      }
-   } else {
-      calculate_static_frustum_vertices(sb);
-      for (unsigned i = 0; i < sb->csm_levels; i++)
-         update_dimensions_from_frustum(&sb->csm[i]);
+   for (unsigned i = 0; i < sb->csm_levels; i++) {
+      shadow_box_update_dim(sb, &sb->csm[i], rot_matrix, forward_vector);
+      update_dimensions_from_frustum(&sb->csm[i]);
    }
 }
 

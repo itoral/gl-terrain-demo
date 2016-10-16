@@ -789,18 +789,17 @@ render_shadow_map()
    static bool shadow_map_rendered = false;
    static int shadow_map_age = 0;
 
-   /* If we have dynamic lighting enabled then we want to update the shadow
-    * map once every certain number of frames. If we have static lighting
-    * we only want to render the shadow map once
+   /* If static lighting is enabled we fix the shadow-map update rate to
+    * once every 30 frames to boost performance.
     */
-   if (TER_DYNAMIC_LIGHT_ENABLE || !shadow_map_rendered) {
-      if (!shadow_map_rendered ||
-          shadow_map_age == TER_SHADOW_UPDATE_INTERVAL) {
-         shadow_map_rendered = ter_shadow_renderer_render(shadow_renderer);
-         shadow_map_age = 0;
-      } else {
-         shadow_map_age++;
-      }
+   if (!shadow_map_rendered ||
+       (TER_DYNAMIC_LIGHT_ENABLE &&
+        shadow_map_age == TER_SHADOW_UPDATE_INTERVAL) ||
+       (!TER_DYNAMIC_LIGHT_ENABLE && shadow_map_age == 30)) {
+      shadow_map_rendered = ter_shadow_renderer_render(shadow_renderer);
+      shadow_map_age = 0;
+   } else {
+      shadow_map_age++;
    }
 }
 
