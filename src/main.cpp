@@ -825,7 +825,9 @@ render_result()
    ter_render_texture_start(fbo);
 
       /* No need to clear the color buffer, we are going to render all pixels */
-      glEnable(GL_MULTISAMPLE);
+      if (fbo->is_multisampled)
+         glEnable(GL_MULTISAMPLE);
+
       glClear(GL_DEPTH_BUFFER_BIT);
 
       if (TER_DEBUG_SHOW_BOUNDING_BOXES)
@@ -841,8 +843,9 @@ render_result()
       ter_water_tile_render(water);
       ter_skybox_render(skybox);
 
-      glDisable(GL_MULTISAMPLE);
-   ter_render_texture_start(fbo);
+      if (fbo->is_multisampled)
+         glDisable(GL_MULTISAMPLE);
+   ter_render_texture_stop(fbo);
 
    /* Resolve the multi-sampled FBO */
    if (scene_ms_fbo)
