@@ -836,6 +836,13 @@ render_2d_tiles()
    glEnable(GL_DEPTH_TEST);
 }
 
+#if 0
+/* We only need this if we have pixels on the scene that don't receive blur
+ * while motion blur is enabled. This should not happen, since we apply
+ * motion blur to all scene elements, but if we want to play around with
+ * disabling motion blur for specific things, then we need to clear the
+ * texture before rendering motion information.
+ */
 static inline void
 clear_motion_texture()
 {
@@ -858,6 +865,7 @@ clear_motion_texture()
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
    }
 }
+#endif
 
 static void
 render_result()
@@ -872,8 +880,6 @@ render_result()
          glEnable(GL_MULTISAMPLE);
 
       glClear(GL_DEPTH_BUFFER_BIT);
-
-      clear_motion_texture();
 
       if (TER_DEBUG_SHOW_BOUNDING_BOXES)
          render_bounding_boxes();
