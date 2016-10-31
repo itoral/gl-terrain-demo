@@ -182,20 +182,24 @@ render_object_set_clipped(const char *key, GList *set, void *data)
       memcpy(instanced_buffer + offset, Model_fptr, model_size);
       offset += model_size;
 
-      /* Prev MVP (for motion blur) */
-      unsigned prev_mvp_size = 16 * sizeof(float);
-      if (d->render_motion) {
-         float *prev_mvp_fptr;
-         if (o->prev_mvp_valid) {
-            prev_mvp_fptr = glm::value_ptr(o->prev_mvp);
-         } else {
-            glm::mat4 current_mvp = (*d->VP) * Model;
-            prev_mvp_fptr = glm::value_ptr(current_mvp);
+      /* Prev MVP. This is only required for motion blur, so if it is disabled
+       * we can just skip this.
+       */
+      if (TER_MOTION_BLUR_FILTER_ENABLE) {
+         unsigned prev_mvp_size = 16 * sizeof(float);
+         if (d->render_motion) {
+            float *prev_mvp_fptr;
+            if (o->prev_mvp_valid) {
+               prev_mvp_fptr = glm::value_ptr(o->prev_mvp);
+            } else {
+               glm::mat4 current_mvp = (*d->VP) * Model;
+               prev_mvp_fptr = glm::value_ptr(current_mvp);
+            }
+            memcpy(instanced_buffer + offset, prev_mvp_fptr, prev_mvp_size);
+            ter_object_set_prev_mvp(o, (*d->VP) * Model);
          }
-         memcpy(instanced_buffer + offset, prev_mvp_fptr, prev_mvp_size);
-         ter_object_set_prev_mvp(o, (*d->VP) * Model);
+         offset += prev_mvp_size;
       }
-      offset += prev_mvp_size;
 
       /* Model variant index */
       unsigned variant_idx_size = sizeof(int);

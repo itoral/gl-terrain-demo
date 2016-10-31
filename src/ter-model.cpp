@@ -647,8 +647,9 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
 
    /* Model matrix (attribute locations 1-4) */
    model->ibuf_idx = 0;
+   size_t buffer_offset = 0;
    glBindBuffer(GL_ARRAY_BUFFER, model->instanced_buf[model->ibuf_idx]);
-   for (int i = 1, c = 0; i < 5; i++, c++) {
+   for (int i = 1; i < 5; i++) {
       glEnableVertexAttribArray(i);
       glVertexAttribPointer(
          i,                  // Attribute index
@@ -656,23 +657,30 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
          GL_FLOAT,           // type
          GL_FALSE,           // normalized?
          TER_MODEL_INSTANCED_ITEM_SIZE, // stride
-         (void*)(c * 4 * sizeof(float)) // array buffer offset
+         (void*) buffer_offset // array buffer offset
       );
       glVertexAttribDivisor(i, 1);
+      buffer_offset += 4 * sizeof(float);
    }
 
    /* Previous MVP (for motion blur) */
-   for (int i = 5, c = 0; i < 9; i++, c++) {
-      glEnableVertexAttribArray(i);
+   for (int i = 5; i < 9; i++) {
       glVertexAttribPointer(
          i,                  // Attribute index
          4,                  // size
          GL_FLOAT,           // type
          GL_FALSE,           // normalized?
          TER_MODEL_INSTANCED_ITEM_SIZE,         // stride
-         (void*)((16 + c * 4) * sizeof(float)) // array buffer offset
+         (void*) buffer_offset // array buffer offset
       );
       glVertexAttribDivisor(i, 1);
+
+      if (TER_MOTION_BLUR_FILTER_ENABLE) {
+         glEnableVertexAttribArray(i);
+         buffer_offset += 4 * sizeof(float);
+      } else {
+         glDisableVertexAttribArray(i);
+      }
    }
 
    /* Model variant index */
@@ -682,9 +690,10 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
       1,                     // size
       GL_INT,                // type
       TER_MODEL_INSTANCED_ITEM_SIZE,   // stride
-      (void*)(2 * 16 * sizeof(float))  // array buffer offset
+      (void*) buffer_offset  // array buffer offset
    );
    glVertexAttribDivisor(9, 1);
+   buffer_offset += sizeof(int);
 
    model->ibuf_used = num_instances;
 
@@ -770,7 +779,7 @@ upload_instanced_data_and_bind(TerModel *model,
                                float *M4x4_list, unsigned num_instances)
 {
    /* Upload the new instance data */
-   unsigned buffer_offset = 0;
+   size_t buffer_offset = 0;
 
    unsigned ibuf_available = TER_MODEL_MAX_INSTANCED_OBJECTS - model->ibuf_used;
    if (num_instances > ibuf_available) {
@@ -798,7 +807,7 @@ upload_instanced_data_and_bind(TerModel *model,
     */
    glBindVertexArray(model->vao);
    glBindBuffer(GL_ARRAY_BUFFER, model->instanced_buf[model->ibuf_idx]);
-   for (int i = 1, c = 0; i < 5; i++, c++) {
+   for (int i = 1; i < 5; i++) {
       glEnableVertexAttribArray(i);
       glVertexAttribPointer(
          i,                  // Attribute index
@@ -806,33 +815,41 @@ upload_instanced_data_and_bind(TerModel *model,
          GL_FLOAT,           // type
          GL_FALSE,           // normalized?
          TER_MODEL_INSTANCED_ITEM_SIZE, // stride
-         (void*)(buffer_offset + c * 4 * sizeof(float)) // array buffer offset
+         (void*)(buffer_offset) // array buffer offset
       );
       glVertexAttribDivisor(i, 1);
+      buffer_offset += 4 * sizeof(float);
    }
 
-   for (int i = 5, c = 0; i < 9; i++, c++) {
-      glEnableVertexAttribArray(i);
-      glVertexAttribPointer(
-         i,                  // Attribute index
-         4,                  // size
-         GL_FLOAT,           // type
-         GL_FALSE,           // normalized?
-         TER_MODEL_INSTANCED_ITEM_SIZE, // stride
-         (void*)(buffer_offset + (16 + c * 4) * sizeof(float)) // array buffer offset
-      );
-      glVertexAttribDivisor(i, 1);
+   /* No need to remap or enable motion blur attributes if
+    * motion blur is disabled
+    */
+   if (TER_MOTION_BLUR_FILTER_ENABLE) {
+      for (int i = 5; i < 9; i++) {
+         glEnableVertexAttribArray(i);
+         glVertexAttribPointer(
+            i,                  // Attribute index
+            4,                  // size
+            GL_FLOAT,           // type
+            GL_FALSE,           // normalized?
+            TER_MODEL_INSTANCED_ITEM_SIZE, // stride
+            (void*)(buffer_offset) // array buffer offset
+         );
+         glVertexAttribDivisor(i, 1);
+         buffer_offset += 4 * sizeof(float);
+      }
    }
 
    glEnableVertexAttribArray(9);
    glVertexAttribIPointer(
       9,                     // Attribute index
       1,                     // size
-      GL_INT  ,              // type
+      GL_INT,                // type
       TER_MODEL_INSTANCED_ITEM_SIZE, // stride
-      (void*)(buffer_offset + 32 * sizeof(float)) // array buffer offset
+      (void*)(buffer_offset) // array buffer offset
    );
    glVertexAttribDivisor(9, 1);
+   buffer_offset += sizeof(int);
 }
 
 static void
