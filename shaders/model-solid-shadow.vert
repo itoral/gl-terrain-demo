@@ -5,10 +5,10 @@ const int CSM_LEVELS = 4;
 /* Attributes */
 layout(location = 0) in vec3 vertexPosition;
 layout(location = 1) in mat4 Model;
-layout(location = 5) in int VariantIdx;
-layout(location = 6) in vec3 vertexNormal;
-layout(location = 7) in int vertexMatIdx;
-
+layout(location = 5) in mat4 PrevMVP;
+layout(location = 9) in int VariantIdx;
+layout(location = 10) in vec3 vertexNormal;
+layout(location = 11) in int vertexMatIdx;
 
 /* Uniforms */
 uniform mat4 View;
@@ -29,6 +29,8 @@ flat out int vs_mat_idx;
 out vec4 vs_shadow_map_uv[CSM_LEVELS];
 out float vs_dist_from_camera;
 out float vs_visibility;
+out vec4 vs_clip_pos;
+out vec4 vs_prev_clip_pos;
 
 void main() {
    mat3 ModelInvTransp = transpose(inverse(mat3(Model)));
@@ -53,4 +55,7 @@ void main() {
 
    vs_visibility = clamp(exp(-pow(distance_from_camera * fog_density, fog_gradient)),
                          0.0, 1.0);
+
+   vs_clip_pos = gl_Position;
+   vs_prev_clip_pos = PrevMVP * vec4(vertexPosition, 1.0);
 }

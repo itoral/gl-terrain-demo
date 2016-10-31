@@ -3,11 +3,11 @@
 /* Attributes */
 layout(location = 0) in vec3 vertexPosition;
 layout(location = 1) in mat4 Model;
-layout(location = 5) in int VariantIdx;
-layout(location = 6) in vec3 vertexNormal;
-layout(location = 7) in int vertexMatIdx;
-layout(location = 8) in vec2 vertexUV;
-layout(location = 9) in int vertexSampler;
+layout(location = 9) in int VariantIdx;
+layout(location = 10) in vec3 vertexNormal;
+layout(location = 11) in int vertexMatIdx;
+layout(location = 12) in vec2 vertexUV;
+layout(location = 13) in int vertexSampler;
 
 /* Uniforms */
 uniform mat4 View;

@@ -24,6 +24,7 @@ void ter_object_renderer_render_clipped(TerObjectRenderer *r,
                                         bool enable_shadows,
                                         unsigned shadow_pfc,
                                         TerClipVolume *clip,
+                                        bool render_motion,
                                         const char *stage);
 
 void ter_object_renderer_render_boxes(TerObjectRenderer *r);

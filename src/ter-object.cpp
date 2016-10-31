@@ -161,3 +161,10 @@ ter_object_get_model_matrix_for_box(TerObject *o)
 
    return Model;
 }
+
+void
+ter_object_set_prev_mvp(TerObject *o, glm::mat4 mvp)
+{
+   o->prev_mvp = mvp;
+   o->prev_mvp_valid = true;
+}

@@ -21,7 +21,9 @@ typedef struct {
    float render_far_plane;
    bool enable_shadows;
    unsigned shadow_pfc;
+   bool render_motion;
    const char *stage;
+   glm::mat4 *VP;
 } TerObjectRendererData;
 
 TerObjectRenderer *
@@ -170,14 +172,32 @@ render_object_set_clipped(const char *key, GList *set, void *data)
          }
       }
 
+      /* Update instanced buffer */
       glm::mat4 Model = ter_object_get_model_matrix(o);
       float *Model_fptr = glm::value_ptr(Model);
 
+      /* Model */
       unsigned offset = num_instances * TER_MODEL_INSTANCED_ITEM_SIZE;
       unsigned model_size = 16 * sizeof(float);
       memcpy(instanced_buffer + offset, Model_fptr, model_size);
       offset += model_size;
 
+      /* Prev MVP (for motion blur) */
+      unsigned prev_mvp_size = 16 * sizeof(float);
+      if (d->render_motion) {
+         float *prev_mvp_fptr;
+         if (o->prev_mvp_valid) {
+            prev_mvp_fptr = glm::value_ptr(o->prev_mvp);
+         } else {
+            glm::mat4 current_mvp = (*d->VP) * Model;
+            prev_mvp_fptr = glm::value_ptr(current_mvp);
+         }
+         memcpy(instanced_buffer + offset, prev_mvp_fptr, prev_mvp_size);
+         ter_object_set_prev_mvp(o, (*d->VP) * Model);
+      }
+      offset += prev_mvp_size;
+
+      /* Model variant index */
       unsigned variant_idx_size = sizeof(int);
       unsigned variant_idx = o->variant * TER_MODEL_MAX_MATERIALS;
       memcpy(instanced_buffer + offset, &variant_idx, variant_idx_size);
@@ -190,7 +210,8 @@ render_object_set_clipped(const char *key, GList *set, void *data)
    TerObject *o = (TerObject *) set->data;
    ter_model_render_prepare(o->model, (float *) instanced_buffer, num_instances,
                             d->clip_far_plane, d->render_far_plane,
-                            d->enable_shadows, d->shadow_pfc);
+                            d->enable_shadows, d->shadow_pfc,
+                            d->render_motion);
 
    glDrawArraysInstanced(GL_TRIANGLES, 0, o->model->vertices.size(),
                          num_instances);
@@ -216,14 +237,20 @@ ter_object_renderer_render_clipped(TerObjectRenderer *r,
                                    bool enable_shadows,
                                    unsigned shadow_pfc,
                                    TerClipVolume *clip,
+                                   bool render_motion,
                                    const char *stage)
 {
    ter_dbg(LOG_RENDER,
-           "OBJ-RENDERER: INFO: stage: %s: blending: %s, shadows: %s\n", stage,
-           enable_blending ? "on" : "off", enable_shadows ? "on" : "off");
+           "OBJ-RENDERER: INFO: stage: %s: blending: %s, shadows: %s, "
+           "blur: %s\n", stage, enable_blending ? "on" : "off",
+           enable_shadows ? "on" : "off", render_motion ? "on" : "off");
 
    if (enable_blending)
       glEnable(GL_BLEND);
+
+   glm::mat4 *Projection = (glm::mat4 *) ter_cache_get("matrix/Projection");
+   glm::mat4 *View = (glm::mat4 *) ter_cache_get("matrix/View");
+   glm::mat4 VP = (*Projection) * (*View);
 
    TerObjectRendererData data;
    data.clip = clip;
@@ -231,7 +258,9 @@ ter_object_renderer_render_clipped(TerObjectRenderer *r,
    data.render_far_plane = render_far_plane;
    data.enable_shadows = enable_shadows;
    data.shadow_pfc = shadow_pfc;
+   data.render_motion = render_motion;
    data.stage = stage;
+   data.VP = &VP;
    g_hash_table_foreach(r->sets, (GHFunc) render_object_set_clipped, &data);
 
    if (enable_blending)

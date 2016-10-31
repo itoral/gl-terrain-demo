@@ -14,8 +14,14 @@
 #include "main-constants.h"
 
 #define TER_MODEL_ENABLE_DEBUG true
-#define NUM_VERTEX_ATTRIBS_SOLID     8
-#define NUM_VERTEX_ATTRIBS_TEXTURED 10
+#define NUM_VERTEX_ATTRIBS_SOLID    12
+#define NUM_VERTEX_ATTRIBS_TEXTURED 14
+
+static inline bool
+is_motion_attrib(int index)
+{
+   return index >= 5 && index <= 8;
+}
 
 static TerModel *
 model_new()
@@ -633,6 +639,12 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
    glGenVertexArrays(1, &model->vao);
    glBindVertexArray(model->vao);
 
+   /* WARNING: if you add new instanced attributes you need to:
+    *
+    * 1. bind them here
+    * 2. update upload_instanced_data_and_bind
+    */
+
    /* Model matrix (attribute locations 1-4) */
    model->ibuf_idx = 0;
    glBindBuffer(GL_ARRAY_BUFFER, model->instanced_buf[model->ibuf_idx]);
@@ -649,15 +661,30 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
       glVertexAttribDivisor(i, 1);
    }
 
-   glEnableVertexAttribArray(5);
+   /* Previous MVP (for motion blur) */
+   for (int i = 5, c = 0; i < 9; i++, c++) {
+      glEnableVertexAttribArray(i);
+      glVertexAttribPointer(
+         i,                  // Attribute index
+         4,                  // size
+         GL_FLOAT,           // type
+         GL_FALSE,           // normalized?
+         TER_MODEL_INSTANCED_ITEM_SIZE,         // stride
+         (void*)((16 + c * 4) * sizeof(float)) // array buffer offset
+      );
+      glVertexAttribDivisor(i, 1);
+   }
+
+   /* Model variant index */
+   glEnableVertexAttribArray(9);
    glVertexAttribIPointer(
-      5,                     // Attribute index
+      9,                     // Attribute index
       1,                     // size
       GL_INT,                // type
-      TER_MODEL_INSTANCED_ITEM_SIZE, // stride
-      (void*)(16 * sizeof(float))    // array buffer offset
+      TER_MODEL_INSTANCED_ITEM_SIZE,   // stride
+      (void*)(2 * 16 * sizeof(float))  // array buffer offset
    );
-   glVertexAttribDivisor(5, 1);
+   glVertexAttribDivisor(9, 1);
 
    model->ibuf_used = num_instances;
 
@@ -678,7 +705,7 @@ upload_and_bind_vertex_data(TerModel *model, float *M4x4_list,
    offset += position_size;
 
    /* Normals */
-   unsigned attr_index = 6;
+   unsigned attr_index = 10;
    glEnableVertexAttribArray(attr_index);
    glVertexAttribPointer(
       attr_index++,       // Attribute index
@@ -784,19 +811,33 @@ upload_instanced_data_and_bind(TerModel *model,
       glVertexAttribDivisor(i, 1);
    }
 
-   glEnableVertexAttribArray(5);
+   for (int i = 5, c = 0; i < 9; i++, c++) {
+      glEnableVertexAttribArray(i);
+      glVertexAttribPointer(
+         i,                  // Attribute index
+         4,                  // size
+         GL_FLOAT,           // type
+         GL_FALSE,           // normalized?
+         TER_MODEL_INSTANCED_ITEM_SIZE, // stride
+         (void*)(buffer_offset + (16 + c * 4) * sizeof(float)) // array buffer offset
+      );
+      glVertexAttribDivisor(i, 1);
+   }
+
+   glEnableVertexAttribArray(9);
    glVertexAttribIPointer(
-      5,                     // Attribute index
+      9,                     // Attribute index
       1,                     // size
       GL_INT  ,              // type
       TER_MODEL_INSTANCED_ITEM_SIZE, // stride
-      (void*)(buffer_offset + 16 * sizeof(float)) // array buffer offset
+      (void*)(buffer_offset + 32 * sizeof(float)) // array buffer offset
    );
-   glVertexAttribDivisor(5, 1);
+   glVertexAttribDivisor(9, 1);
 }
 
 static void
-model_bind_vao(TerModel *model, float *M4x4_list, unsigned num_instances)
+model_bind_vao(TerModel *model, float *M4x4_list, unsigned num_instances,
+               bool render_motion)
 {
    if (model->vao == 0) {
       upload_and_bind_vertex_data(model, M4x4_list, num_instances);
@@ -804,8 +845,13 @@ model_bind_vao(TerModel *model, float *M4x4_list, unsigned num_instances)
       upload_instanced_data_and_bind(model, M4x4_list, num_instances);
       unsigned num_attrs = model_is_textured(model) ?
          NUM_VERTEX_ATTRIBS_TEXTURED : NUM_VERTEX_ATTRIBS_SOLID;
-      for (unsigned i = 0; i < num_attrs; i++)
-         glEnableVertexAttribArray(i);
+      for (unsigned i = 0; i < num_attrs; i++) {
+         /* Disable previous MVP attribute if not rendering motion vectors */
+         if (!render_motion && is_motion_attrib(i))
+            glDisableVertexAttribArray(i);
+         else
+            glEnableVertexAttribArray(i);
+      }
    }
 }
 
@@ -899,7 +945,7 @@ ter_model_render(TerModel *model,
 
    ter_model_render_prepare(model, (float *) Model_fptr, 1,
                             TER_FAR_PLANE, TER_FAR_PLANE,
-                            TER_SHADOW_PFC, enable_shadow);
+                            TER_SHADOW_PFC, enable_shadow, false);
 
    glDrawArraysInstanced(GL_TRIANGLES, 0, model->vertices.size(), 1);
 
@@ -910,7 +956,8 @@ TerShaderProgramBasic *
 ter_model_render_prepare(TerModel *model,
                          float *M4x4_list, unsigned num_instances,
                          float clip_far_plane, float render_far_plane,
-                         bool enable_shadow, unsigned shadow_pfc)
+                         bool enable_shadow, unsigned shadow_pfc,
+                         bool render_motion)
 {
    bool is_solid;
 
@@ -928,6 +975,8 @@ ter_model_render_prepare(TerModel *model,
    glm::mat4 Projection =
       glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
                        TER_NEAR_PLANE, render_far_plane);
+
+   assert(!render_motion || render_far_plane == TER_FAR_PLANE);
 
    glm::mat4 *View = (glm::mat4 *) ter_cache_get("matrix/View");
    glm::mat4 *ViewInv = (glm::mat4 *) ter_cache_get("matrix/ViewInv");
@@ -973,7 +1022,7 @@ ter_model_render_prepare(TerModel *model,
       ter_shader_program_model_tex_load_textures(sh_tex, model->num_tids);
    }
 
-   model_bind_vao(model, M4x4_list, num_instances);
+   model_bind_vao(model, M4x4_list, num_instances, render_motion);
 
    return sh;
 }

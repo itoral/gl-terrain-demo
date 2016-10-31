@@ -17,6 +17,8 @@ typedef struct {
    bool cast_shadow;
    bool can_collide;
    TerBox box;
+   glm::mat4 prev_mvp;
+   bool prev_mvp_valid;
 } TerObject;
 
 TerObject *ter_object_new(TerModel *model, float x, float y, float z);
@@ -37,5 +39,7 @@ TerBox *ter_object_get_box(TerObject *o);
 bool ter_object_collision(TerObject *o, TerBox *box);
 glm::mat4 ter_object_get_model_matrix_for_box(TerObject *o);
 bool ter_object_is_rotated(TerObject *o);
+
+void ter_object_set_prev_mvp(TerObject *o, glm::mat4 mvp);
 
 #endif

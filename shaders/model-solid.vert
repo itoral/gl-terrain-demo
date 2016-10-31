@@ -3,10 +3,9 @@
 /* Attributes */
 layout(location = 0) in vec3 vertexPosition;
 layout(location = 1) in mat4 Model;
-layout(location = 5) in int VariantIdx;
-layout(location = 6) in vec3 vertexNormal;
-layout(location = 7) in int vertexMatIdx;
-
+layout(location = 9) in int VariantIdx;
+layout(location = 10) in vec3 vertexNormal;
+layout(location = 11) in int vertexMatIdx;
 
 /* Uniforms */
 uniform mat4 View;

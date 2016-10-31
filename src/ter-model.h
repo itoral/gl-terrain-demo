@@ -10,7 +10,12 @@
 #include "ter-util.h"
 #include "ter-texture.h"
 
-#define TER_MODEL_INSTANCED_ITEM_SIZE (16 * sizeof(float) + 1 * sizeof(int))
+/* Instanced attributes:
+ *  - Model (mat4)
+ *  - Previous frame MVP (mat4, for motion)
+ *  - Model variant index
+ */
+#define TER_MODEL_INSTANCED_ITEM_SIZE (16 * sizeof(float) + 16 * sizeof(float) + 1 * sizeof(int))
 #define TER_MODEL_MAX_INSTANCED_OBJECTS (TER_MODEL_MAX_INSTANCED_VBO_BYTES / TER_MODEL_INSTANCED_ITEM_SIZE)
 
 typedef struct {
@@ -68,7 +73,8 @@ TerShaderProgramBasic *ter_model_render_prepare(TerModel *model,
                                                 float clip_far_plane,
                                                 float render_far_plane,
                                                 bool enable_shadow,
-                                                unsigned shadow_pfc);
+                                                unsigned shadow_pfc,
+                                                bool render_motion);
 void ter_model_render_prepare_for_shadow_map(TerModel *model,
                                              float *M4x4_list,
                                              unsigned num_instances);

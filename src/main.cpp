@@ -647,6 +647,7 @@ render_water_refraction()
             true,
             TER_WATER_REFRACTION_SHADOWS_ENABLE, TER_SHADOW_PFC_WATER,
             &clip,
+            false,
             "water refraction");
 
          if (!TER_WATER_REFRACTION_RECORD_OBJECT_DEPTH)
@@ -708,6 +709,7 @@ render_water_reflection()
             TER_WATER_REFLECTION_SHADOWS_ENABLE,
             TER_SHADOW_PFC_WATER,
             &clip,
+            false,
             "water reflection");
       }
 
@@ -757,6 +759,7 @@ render_objects(bool enable_shadows)
       true,
       enable_shadows, TER_SHADOW_PFC,
       &clip,
+      true,
       "scene objects");
 }
 
