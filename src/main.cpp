@@ -1003,24 +1003,24 @@ move_camera(TerCamera *cam, float speed)
 {
    /* Handle rotation first, we don't care for collisions here  */
    if (glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_RELEASE) {
-      ter_camera_rotate(cam, 0.0f, speed * 1.0f, 0.0f);
+      ter_camera_rotate(cam, 0.0f, speed * TER_CAMERA_ROT_SPEED, 0.0f);
    }
    else if (glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_RELEASE) {
-      ter_camera_rotate(cam, 0.0f, speed * (-1.0f), 0.0f);
+      ter_camera_rotate(cam, 0.0f, speed * (-TER_CAMERA_ROT_SPEED), 0.0f);
    }
 
    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) != GLFW_RELEASE) {
-      ter_camera_rotate(cam, speed * 1.0f, 0.0f, 0.0f);
+      ter_camera_rotate(cam, speed * TER_CAMERA_ROT_SPEED, 0.0f, 0.0f);
    }
    else if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) != GLFW_RELEASE) {
-      ter_camera_rotate(cam, speed * (-1.0f), 0.0f, 0.0f);
+      ter_camera_rotate(cam, speed * (-TER_CAMERA_ROT_SPEED), 0.0f, 0.0f);
    }
 
    /* Handle stepping */
    if (glfwGetKey(window, GLFW_KEY_UP) != GLFW_RELEASE)
-      speed *= 0.15f;
+      speed *= TER_CAMERA_MOV_SPEED;
    else if (glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_RELEASE)
-      speed *= -0.15f;
+      speed *= -TER_CAMERA_MOV_SPEED;
    else
       return; /* Not stepping */
 

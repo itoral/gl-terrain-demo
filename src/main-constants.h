@@ -367,6 +367,16 @@ TER_SHADOW_CSM_MAP_SIZES[4] = { 1.0f, 0.75f, 0.5f, 0.0f };
 #define TER_MOTION_BLUR_DIVISOR 8.0f
 
 /*
+ * Camera rotation speed
+ */
+#define TER_CAMERA_ROT_SPEED 1.0f
+
+/*
+ * Camera movement speed
+ */
+#define TER_CAMERA_MOV_SPEED 0.15f
+
+/*
  * Virtual texture IDs
  */
 #define TER_TEX_TERRAIN_HEIGHTMAP_01    0
