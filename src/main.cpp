@@ -565,14 +565,20 @@ setup_scene()
    tile = ter_tile_new(tw , th, 0.0f, TER_WIN_HEIGHT - th,
                        water->reflection->texture[0]);
    ter_cache_set("tile/tile-water-reflection", tile);
+
    tile = ter_tile_new(tw, th, tw, TER_WIN_HEIGHT - th,
                        water->refraction->texture[0]);
    ter_cache_set("tile/tile-water-refraction", tile);
    TerShadowMap *shadow_map =
       ter_shadow_box_get_shadow_map(shadow_renderer->shadow_box, 0);
+
    tile = ter_tile_new(tw, th, 2 * tw, TER_WIN_HEIGHT - th,
                        shadow_map->map->depth_texture);
    ter_cache_set("tile/tile-shadow-map", tile);
+
+   tile = ter_tile_new(tw, th, 0.0f, TER_WIN_HEIGHT - th,
+                       scene_fbo->texture[1]);
+   ter_cache_set("tile/tile-motion", tile);
 }
 
 static void
@@ -802,6 +808,13 @@ render_shadow_map_tile()
    ter_tile_render(tile);
 }
 
+static inline void
+render_motion_tile()
+{
+   TerTile *tile = (TerTile *) ter_cache_get("tile/tile-motion");
+   ter_tile_render(tile);
+}
+
 static void
 render_shadow_map()
 {
@@ -832,6 +845,9 @@ render_2d_tiles()
 
    if (TER_DEBUG_SHOW_SHADOW_MAP_TILE)
       render_shadow_map_tile();
+
+   if (TER_DEBUG_SHOW_MOTION_TILE)
+      render_motion_tile();
 
    glEnable(GL_DEPTH_TEST);
 }
