@@ -106,7 +106,7 @@ skybox_bind_vao(TerSkyBox *b)
 }
 
 void
-ter_skybox_render(TerSkyBox *b)
+ter_skybox_render(TerSkyBox *b, bool render_motion)
 {
    TerShaderProgramSkybox *sh =
       (TerShaderProgramSkybox *) ter_cache_get("program/skybox");
@@ -138,6 +138,16 @@ ter_skybox_render(TerSkyBox *b)
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_CUBE_MAP, tid);
    ter_shader_program_skybox_load_sampler(sh, 0);
+
+   if (render_motion) {
+      glm::mat4 current_MVP = (*Projection) * FixedView * Model;
+      if (!b->prev_mvp_valid)
+         ter_shader_program_skybox_load_prev_MVP(sh, &current_MVP);
+      else
+         ter_shader_program_skybox_load_prev_MVP(sh, &b->prev_mvp);
+      b->prev_mvp = current_MVP;
+      b->prev_mvp_valid = true;
+   }
 
    skybox_bind_vao(b);
    glDrawArrays(GL_TRIANGLES, 0, 36);

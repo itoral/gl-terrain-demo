@@ -704,7 +704,7 @@ render_water_reflection()
       /* We want to render the skybox first, so that blended object models
        * fade against it
        */
-      ter_skybox_render(skybox);
+      ter_skybox_render(skybox, false);
 
       glEnable(GL_CLIP_DISTANCE0);
 
@@ -886,7 +886,7 @@ render_result()
       render_objects(true, TER_MOTION_BLUR_FILTER_ENABLE);
       ter_terrain_render(terrain, true, TER_MOTION_BLUR_FILTER_ENABLE);
       ter_water_tile_render(water, TER_MOTION_BLUR_FILTER_ENABLE);
-      ter_skybox_render(skybox);
+      ter_skybox_render(skybox, TER_MOTION_BLUR_FILTER_ENABLE);
 
       if (fbo->is_multisampled)
          glDisable(GL_MULTISAMPLE);

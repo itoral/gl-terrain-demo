@@ -364,6 +364,7 @@ ter_shader_program_skybox_new()
    TerShaderProgramSkybox *p = g_new0(TerShaderProgramSkybox, 1);
    init_basic(&p->basic, programID);
    p->sampler_loc = glGetUniformLocation(programID, "Sampler");
+   p->prev_mvp_loc = glGetUniformLocation(programID, "PrevMVP");
    return p;
 }
 
@@ -371,6 +372,13 @@ void
 ter_shader_program_skybox_load_sampler(TerShaderProgramSkybox *p, int unit)
 {
    glUniform1i(p->sampler_loc, unit);
+}
+
+void
+ter_shader_program_skybox_load_prev_MVP(TerShaderProgramSkybox *p,
+                                        glm::mat4 *mat)
+{
+   glUniformMatrix4fv(p->prev_mvp_loc, 1, GL_FALSE, &(*mat)[0][0]);
 }
 
 static void

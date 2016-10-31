@@ -13,12 +13,15 @@ typedef struct {
 
    unsigned vao;
    unsigned vertex_buf;
+
+   glm::mat4 prev_mvp;
+   bool prev_mvp_valid;
 } TerSkyBox;
 
 TerSkyBox *ter_skybox_new(unsigned size, unsigned vtid);
 void ter_skybox_free(TerSkyBox *b);
 
 void ter_skybox_update(TerSkyBox *b);
-void ter_skybox_render(TerSkyBox *b);
+void ter_skybox_render(TerSkyBox *b, bool render_motion);
 
 #endif

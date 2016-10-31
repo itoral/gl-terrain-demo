@@ -123,11 +123,14 @@ void ter_shader_program_terrain_load_prev_MVP(TerShaderProgramTerrain *p,
 typedef struct {
    TerShaderProgramBasic basic;
    unsigned sampler_loc;
+   unsigned prev_mvp_loc;
 } TerShaderProgramSkybox;
 
 TerShaderProgramSkybox *ter_shader_program_skybox_new();
 
 void ter_shader_program_skybox_load_sampler(TerShaderProgramSkybox *p, int unit);
+void ter_shader_program_skybox_load_prev_MVP(TerShaderProgramSkybox *p, 
+                                             glm::mat4 *mat);
 
 typedef struct {
    unsigned ambient_loc[TER_MODEL_MAX_MATERIALS * TER_MODEL_MAX_VARIANTS];
