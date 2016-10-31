@@ -108,6 +108,7 @@ typedef struct {
    unsigned sampler_loc;
    unsigned sampler_divisor_loc;
    TerShaderProgramShadowData shadow;
+   unsigned prev_mvp_loc;
 } TerShaderProgramTerrain;
 
 TerShaderProgramTerrain *ter_shader_program_terrain_new();
@@ -116,6 +117,8 @@ TerShaderProgramTerrain *ter_shader_program_terrain_shadow_new();
 void ter_shader_program_terrain_load_sampler(TerShaderProgramTerrain *p,
                                              int unit, float divisor);
 
+void ter_shader_program_terrain_load_prev_MVP(TerShaderProgramTerrain *p,
+                                              glm::mat4 *mat);
 
 typedef struct {
    TerShaderProgramBasic basic;

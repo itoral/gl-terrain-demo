@@ -670,7 +670,7 @@ render_water_refraction()
             glEnable(GL_DEPTH_TEST);
       }
 
-      ter_terrain_render(terrain, TER_WATER_REFRACTION_SHADOWS_ENABLE);
+      ter_terrain_render(terrain, TER_WATER_REFRACTION_SHADOWS_ENABLE, false);
 
       glDisable(GL_CLIP_DISTANCE0);
    ter_render_texture_stop(water->refraction);
@@ -729,7 +729,7 @@ render_water_reflection()
             "water reflection");
       }
 
-      ter_terrain_render(terrain, TER_WATER_REFLECTION_SHADOWS_ENABLE);
+      ter_terrain_render(terrain, TER_WATER_REFLECTION_SHADOWS_ENABLE, false);
 
       glDisable(GL_CLIP_DISTANCE0);
 
@@ -884,7 +884,7 @@ render_result()
        * more expensive to render.
        */
       render_objects(true, TER_MOTION_BLUR_FILTER_ENABLE);
-      ter_terrain_render(terrain, true);
+      ter_terrain_render(terrain, true, TER_MOTION_BLUR_FILTER_ENABLE);
       ter_water_tile_render(water);
       ter_skybox_render(skybox);
 

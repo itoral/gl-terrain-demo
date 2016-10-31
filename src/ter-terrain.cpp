@@ -338,7 +338,7 @@ terrain_bind_vao(TerTerrain *t)
 }
 
 static void
-terrain_prepare(TerTerrain *t, bool enable_shadows)
+terrain_prepare(TerTerrain *t, bool enable_shadows, bool render_motion)
 {
    TerShaderProgramTerrain *sh = (TerShaderProgramTerrain *)
       (enable_shadows ? ter_cache_get("program/terrain-shadow") :
@@ -366,6 +366,16 @@ terrain_prepare(TerTerrain *t, bool enable_shadows)
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, tid);
    ter_shader_program_terrain_load_sampler(sh, 0, 4.0);
+
+   if (render_motion) {
+      glm::mat4 current_MVP = (*Projection) * (*View) * Model;
+      if (!t->prev_mvp_valid)
+         ter_shader_program_terrain_load_prev_MVP(sh, &current_MVP);
+      else
+         ter_shader_program_terrain_load_prev_MVP(sh, &t->prev_mvp);
+      t->prev_mvp = current_MVP;
+      t->prev_mvp_valid = true;
+   }
 
    glm::vec4 *clip_plane = (glm::vec4 *) ter_cache_get("clip/clip-plane-0");
    if (clip_plane)
@@ -482,9 +492,9 @@ get_current_ib_offset(TerTerrain *t)
  * where ter_terrain_update_index_buffer_for_clip_volume() uploaded index data.
  */
 void
-ter_terrain_render(TerTerrain *t, bool enable_shadows)
+ter_terrain_render(TerTerrain *t, bool enable_shadows, bool render_motion)
 {
-   terrain_prepare(t, enable_shadows);
+   terrain_prepare(t, enable_shadows, render_motion);
    glDrawElements(GL_TRIANGLE_STRIP, t->num_indices,
                   GL_UNSIGNED_INT, (void *) get_current_ib_offset(t));
    terrain_finish();

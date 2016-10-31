@@ -10,6 +10,7 @@ layout(location = 1) in vec3 vertexNormal;
 uniform mat4 Model;
 uniform mat4 View;
 uniform mat4 Projection;
+uniform mat4 PrevMVP;
 uniform mat3 ModelInvTransp;
 uniform vec4 ClipPlane;
 
@@ -26,6 +27,8 @@ out vec3 vs_normal;
 out vec4 vs_shadow_map_uv[CSM_LEVELS];
 out float vs_dist_from_camera;
 out float vs_visibility;
+out vec4 vs_clip_pos;
+out vec4 vs_prev_clip_pos;
 
 void main() {
    vs_pos = Model * vec4(vertexPosition, 1.0);
@@ -48,4 +51,7 @@ void main() {
 
    vs_visibility = clamp(exp(-pow(distance_from_camera * fog_density, fog_gradient)),
                          0.0, 1.0);
+
+   vs_clip_pos = gl_Position;
+   vs_prev_clip_pos = PrevMVP * vec4(vertexPosition, 1.0);
 }

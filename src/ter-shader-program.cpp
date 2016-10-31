@@ -337,6 +337,7 @@ ter_shader_program_terrain_shadow_new()
    p->sampler_loc = glGetUniformLocation(programID, "SamplerTerrain");
    p->sampler_divisor_loc = glGetUniformLocation(programID, "SamplerCoordDivisor");
    init_shadow_data(&p->shadow, programID);
+   p->prev_mvp_loc = glGetUniformLocation(programID, "PrevMVP");
    return p;
 }
 
@@ -346,6 +347,13 @@ ter_shader_program_terrain_load_sampler(TerShaderProgramTerrain *p,
 {
    glUniform1i(p->sampler_loc, unit);
    glUniform1f(p->sampler_divisor_loc, divisor);
+}
+
+void
+ter_shader_program_terrain_load_prev_MVP(TerShaderProgramTerrain *p,
+                                         glm::mat4 *mat)
+{
+   glUniformMatrix4fv(p->prev_mvp_loc, 1, GL_FALSE, &(*mat)[0][0]);
 }
 
 TerShaderProgramSkybox *

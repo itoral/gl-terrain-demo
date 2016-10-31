@@ -33,6 +33,9 @@ typedef struct {
    unsigned ibuf_cur_offset;
 
    TerMaterial material;
+
+   glm::mat4 prev_mvp;
+   bool prev_mvp_valid;
 } TerTerrain;
 
 #define TERRAIN(t, w, d) t->height[(w) * t->depth + (d)]
@@ -48,7 +51,7 @@ void ter_terrain_set_heights_from_texture(TerTerrain *t, int tex, float offset, 
    
 void ter_terrain_build_mesh(TerTerrain *t);
 
-void ter_terrain_render(TerTerrain *t, bool enable_shadows);
+void ter_terrain_render(TerTerrain *t, bool enable_shadows, bool render_motion);
 void ter_terrain_render_clipped(TerTerrain *t, bool enable_shadows, TerClipVolume *clip);
 
 void ter_terrain_compute_clipped_indices(TerTerrain *t, TerClipVolume *clip,

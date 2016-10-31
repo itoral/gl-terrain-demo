@@ -8,6 +8,8 @@ in vec3 vs_normal;
 in vec4 vs_shadow_map_uv[CSM_LEVELS];
 in float vs_dist_from_camera;
 in float vs_visibility;
+in vec4 vs_clip_pos;
+in vec4 vs_prev_clip_pos;
 
 /* Uniforms */
 uniform mat4 ViewInv;
@@ -35,6 +37,7 @@ uniform vec3 SkyColor;
 
 /* Outputs */
 out vec4 fs_color;
+out vec4 fs_motion_vector;
 
 float sample_shadow_map(int level, vec3 shadow_coords)
 {
@@ -127,4 +130,9 @@ void main()
    vec3 light_color = diffuse + ambient + specular;
    vec3 final_color = mix(SkyColor, light_color, vs_visibility);
    fs_color = vec4(final_color, 1.0);
+
+   /* Motion vector (0.5 means no motion) */
+   vec3 ndc_pos = (vs_clip_pos / vs_clip_pos.w).xyz;
+   vec3 prev_ndc_pos = (vs_prev_clip_pos / vs_prev_clip_pos.w).xyz;
+   fs_motion_vector = vec4((ndc_pos - prev_ndc_pos).xy + 0.5, 0, 1);
 }
