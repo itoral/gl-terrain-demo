@@ -885,7 +885,7 @@ render_result()
        */
       render_objects(true, TER_MOTION_BLUR_FILTER_ENABLE);
       ter_terrain_render(terrain, true, TER_MOTION_BLUR_FILTER_ENABLE);
-      ter_water_tile_render(water);
+      ter_water_tile_render(water, TER_MOTION_BLUR_FILTER_ENABLE);
       ter_skybox_render(skybox);
 
       if (fbo->is_multisampled)

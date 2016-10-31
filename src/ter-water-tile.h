@@ -25,6 +25,9 @@ typedef struct {
    TerRenderTexture *refraction;
    unsigned dudv_tex;
    unsigned normal_tex;
+
+   glm::mat4 prev_mvp;
+   bool prev_mvp_valid;
 } TerWaterTile;
 
 TerWaterTile *ter_water_tile_new(float x0, float z0, float x1, float z1,
@@ -35,6 +38,6 @@ void ter_water_tile_free(TerWaterTile *t);
 
 void ter_water_tile_update(TerWaterTile *t);
 
-void ter_water_tile_render(TerWaterTile *t);
+void ter_water_tile_render(TerWaterTile *t, bool render_motion);
 
 #endif

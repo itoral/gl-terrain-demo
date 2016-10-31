@@ -508,6 +508,7 @@ ter_shader_program_water_new()
    p->near_plane_loc = glGetUniformLocation(programID, "NearPlane");
    p->far_plane_loc = glGetUniformLocation(programID, "FarPlane");
    init_shadow_data(&p->shadow, programID);
+   p->prev_mvp_loc = glGetUniformLocation(programID, "PrevMVP");
    return p;
 }
 
@@ -560,6 +561,13 @@ ter_shader_program_water_load_near_far_planes(TerShaderProgramWater *p,
 {
    glUniform1f(p->near_plane_loc, near);
    glUniform1f(p->far_plane_loc, far);
+}
+
+void
+ter_shader_program_water_load_prev_MVP(TerShaderProgramWater *p,
+                                       glm::mat4 *mat)
+{
+   glUniformMatrix4fv(p->prev_mvp_loc, 1, GL_FALSE, &(*mat)[0][0]);
 }
 
 TerShaderProgramShadowMap *

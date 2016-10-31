@@ -148,7 +148,7 @@ water_unbind(TerWaterTile *t)
 }
 
 void
-ter_water_tile_render(TerWaterTile *t)
+ter_water_tile_render(TerWaterTile *t, bool render_motion)
 {
    TerShaderProgramWater *sh;
    sh = (TerShaderProgramWater *) ter_cache_get("program/water");
@@ -201,6 +201,16 @@ ter_water_tile_render(TerWaterTile *t)
                     sr->shadow_box->csm[level].shadow_map->map->depth_texture);
    }
    ter_shader_program_shadow_data_load_(&sh->shadow, sr, 5);
+
+   if (render_motion) {
+      glm::mat4 current_MVP = (*Projection) * (*View) * Model;
+      if (!t->prev_mvp_valid)
+         ter_shader_program_water_load_prev_MVP(sh, &current_MVP);
+      else
+         ter_shader_program_water_load_prev_MVP(sh, &t->prev_mvp);
+      t->prev_mvp = current_MVP;
+      t->prev_mvp_valid = true;
+   }
 
    glEnable(GL_BLEND);
    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

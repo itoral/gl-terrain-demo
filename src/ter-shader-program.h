@@ -184,6 +184,7 @@ typedef struct {
    unsigned tex_normal_map_loc;
    unsigned tex_depth_loc;
    unsigned near_plane_loc, far_plane_loc;
+   unsigned prev_mvp_loc;
    TerShaderProgramShadowData shadow;
 } TerShaderProgramWater;
 
@@ -208,6 +209,9 @@ void ter_shader_program_water_load_camera_position(TerShaderProgramWater *p,
 
 void ter_shader_program_water_load_near_far_planes(TerShaderProgramWater *p,
                                                    float near, float far);
+
+void ter_shader_program_water_load_prev_MVP(TerShaderProgramWater *p,
+                                            glm::mat4 *mat);
 
 typedef struct {
    TerShaderProgram prog;

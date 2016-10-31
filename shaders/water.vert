@@ -9,6 +9,7 @@ layout(location = 0) in vec3 vertexPosition;
 uniform mat4 Model;
 uniform mat4 View;
 uniform mat4 Projection;
+uniform mat4 PrevMVP;
 uniform mat3 ModelInvTransp;
 
 uniform vec3 CameraPosition;
@@ -23,17 +24,17 @@ const float fog_gradient = 2.0;
 /* Outputs */
 out vec4 vs_pos;
 out vec2 vs_uv;
-out vec4 vs_clip_pos;
 out vec3 vs_camera_vector;
 out float vs_visibility;
 out vec4 vs_shadow_map_uv[CSM_LEVELS];
 out float vs_dist_from_camera;
+out vec4 vs_clip_pos;
+out vec4 vs_prev_clip_pos;
 
 void main() {
    vs_pos = Model * vec4(vertexPosition, 1.0);
    vec4 pos_from_camera = View * vs_pos;
    gl_Position = Projection * pos_from_camera;
-   vs_clip_pos = gl_Position;
 
    /* Replicate the dudv map across the water surface */
    vs_uv = vertexPosition.xz / 4.0f;
@@ -51,4 +52,7 @@ void main() {
 
    vs_visibility = clamp(exp(-pow(distance_from_camera * fog_density, fog_gradient)),
                          0.0, 1.0);
+
+   vs_clip_pos = gl_Position;
+   vs_prev_clip_pos = PrevMVP * vec4(vertexPosition, 1.0);
 }
