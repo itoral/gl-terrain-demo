@@ -182,9 +182,9 @@ ter_water_tile_render(TerWaterTile *t)
                                                  TER_NEAR_PLANE, TER_FAR_PLANE);
 
    glActiveTexture(GL_TEXTURE0);
-   glBindTexture(GL_TEXTURE_2D, t->reflection->texture);
+   glBindTexture(GL_TEXTURE_2D, t->reflection->texture[0]);
    glActiveTexture(GL_TEXTURE1);
-   glBindTexture(GL_TEXTURE_2D, t->refraction->texture);
+   glBindTexture(GL_TEXTURE_2D, t->refraction->texture[0]);
    glActiveTexture(GL_TEXTURE2);
    glBindTexture(GL_TEXTURE_2D, t->dudv_tex);
    glActiveTexture(GL_TEXTURE3);

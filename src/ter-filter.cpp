@@ -167,23 +167,23 @@ ter_bloom_filter_run(TerBloomFilter *bf, TerRenderTexture *src)
       (TerShaderProgramFilterCombine *) ter_cache_get("program/bloom-combine");
 
    ter_render_texture_start(bf->brightness_fbo);
-   ter_filter_brightness_select_render(src->texture,
+   ter_filter_brightness_select_render(src->texture[0],
                                        TER_BLOOM_LUMINANCE_FACTOR,
                                        sh_brightness);
    ter_render_texture_stop(bf->brightness_fbo);
 
    ter_render_texture_start(bf->hblur_fbo);
-   ter_filter_blur_render(bf->brightness_fbo->texture, bf->hblur_fbo->width,
+   ter_filter_blur_render(bf->brightness_fbo->texture[0], bf->hblur_fbo->width,
                           sh_hblur);
    ter_render_texture_stop(bf->hblur_fbo);
 
    ter_render_texture_start(bf->vblur_fbo);
-   ter_filter_blur_render(bf->hblur_fbo->texture, bf->vblur_fbo->height,
+   ter_filter_blur_render(bf->hblur_fbo->texture[0], bf->vblur_fbo->height,
                           sh_vblur);
    ter_render_texture_stop(bf->vblur_fbo);
 
    ter_render_texture_start(bf->result_fbo);
-   ter_filter_combine_render(src->texture, bf->vblur_fbo->texture,
+   ter_filter_combine_render(src->texture[0], bf->vblur_fbo->texture[0],
                              sh_combine);
    ter_render_texture_stop(bf->result_fbo);
 

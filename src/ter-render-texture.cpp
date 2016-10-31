@@ -3,18 +3,17 @@
 
 #include <glib.h>
 
-#define GL_GLEXT_PROTOTYPES 1
-#include <GL/gl.h>
-
 TerRenderTexture *
 ter_render_texture_new(int width, int height,
                        bool clamp_to_edge,
                        bool needs_depth,
                        bool use_depth_texture,
-                       bool multisample)
+                       bool multisample,
+                       unsigned num_color_attachments)
 {
    /* We don't use depth textures with multisampled fbos */
    assert(!multisample || !use_depth_texture);
+   assert(num_color_attachments <= 4);
 
    if (TER_MULTISAMPLING_SAMPLES <= 1)
       multisample = false;
@@ -23,38 +22,41 @@ ter_render_texture_new(int width, int height,
    rt->width = width;
    rt->height = height;
    rt->is_multisampled = multisample;
+   rt->num_color_textures = num_color_attachments;
 
    glGenFramebuffers(1, &rt->framebuffer);
    glBindFramebuffer(GL_FRAMEBUFFER, rt->framebuffer);
-   glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
-   /* Color attachment */
-   if (!rt->is_multisampled) {
-      glGenTextures(1, &rt->texture);
-      glBindTexture(GL_TEXTURE_2D, rt->texture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, 0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      if (clamp_to_edge) {
-         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+   /* Color attachments */
+   glGenTextures(num_color_attachments, rt->texture);
+   for (unsigned i = 0; i < num_color_attachments; i++) {
+      int attachment = GL_COLOR_ATTACHMENT0 + i;
+      if (!rt->is_multisampled) {
+         glBindTexture(GL_TEXTURE_2D, rt->texture[i]);
+         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+                      0, GL_RGBA, GL_FLOAT, 0);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+         if (clamp_to_edge) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+         }
+         glFramebufferTexture2D(GL_FRAMEBUFFER, attachment,
+                                GL_TEXTURE_2D, rt->texture[i], 0);
+      } else {
+         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, rt->texture[i]);
+         glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
+                                 TER_MULTISAMPLING_SAMPLES,
+                                 GL_RGBA8, width, height, true);
+         if (clamp_to_edge) {
+            glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE,
+                            GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE,
+                            GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+         }
+         glFramebufferTexture2D(GL_FRAMEBUFFER, attachment,
+                                GL_TEXTURE_2D_MULTISAMPLE, rt->texture[i], 0);
       }
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D, rt->texture, 0);
-   } else {
-      glGenTextures(1, &rt->texture);
-      glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, rt->texture);
-      glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
-                              TER_MULTISAMPLING_SAMPLES,
-                              GL_RGBA8, width, height, true);
-      if (clamp_to_edge) {
-         glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE,
-                         GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-         glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE,
-                         GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      }
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D_MULTISAMPLE, rt->texture, 0);
    }
 
    /* Depth attachment */
@@ -147,8 +149,9 @@ void
 ter_render_texture_free(TerRenderTexture *rt)
 {
    glDeleteFramebuffers(1, &rt->framebuffer);
-   if (rt->texture)
-      glDeleteTextures(1, &rt->texture);
+   for (unsigned i = 0; i < rt->num_color_textures; i++) {
+      glDeleteTextures(1, &rt->texture[i]);
+   }
    if (rt->depth_texture)
       glDeleteTextures(1, &rt->depth_texture);
    if (rt->depthbuffer)
@@ -159,9 +162,17 @@ ter_render_texture_free(TerRenderTexture *rt)
 void
 ter_render_texture_start(TerRenderTexture *rt)
 {
+   static const GLenum color_attachments[] = {
+      GL_COLOR_ATTACHMENT0,
+      GL_COLOR_ATTACHMENT1,
+      GL_COLOR_ATTACHMENT2,
+      GL_COLOR_ATTACHMENT3,
+   };
+
    glGetIntegerv(GL_VIEWPORT, rt->prev_viewport);
    glBindTexture(GL_TEXTURE_2D, 0);
    glBindFramebuffer(GL_FRAMEBUFFER, rt->framebuffer);
+   glDrawBuffers(rt->num_color_textures, color_attachments);
    glViewport(0, 0, rt->width, rt->height);
 }
 
@@ -177,23 +188,39 @@ void
 ter_render_texture_blit(TerRenderTexture *src,
                         TerRenderTexture *dst)
 {
+   static const GLenum color_attachments[] = {
+      GL_COLOR_ATTACHMENT0,
+      GL_COLOR_ATTACHMENT1,
+      GL_COLOR_ATTACHMENT2,
+      GL_COLOR_ATTACHMENT3,
+   };
+
    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->framebuffer);
    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->framebuffer);
-   glBlitFramebuffer(0, 0, src->width, src->height,
-                     0, 0, dst->width, dst->height,
-                     GL_COLOR_BUFFER_BIT |
-                        (dst->has_depth ? GL_DEPTH_BUFFER_BIT : 0),
-                     GL_NEAREST);
+
+   for (unsigned i = 0; i < src->num_color_textures; i++) {
+      glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+      glDrawBuffers(1, &color_attachments[i]);
+
+      glBlitFramebuffer(0, 0, src->width, src->height,
+                        0, 0, dst->width, dst->height,
+                        GL_COLOR_BUFFER_BIT |
+                           (dst->has_depth ? GL_DEPTH_BUFFER_BIT : 0),
+                        GL_NEAREST);
+   }
+
    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void
 ter_render_texture_blit_to_window(TerRenderTexture *src,
-                                  unsigned width, unsigned height)
+                                  unsigned width, unsigned height,
+                                  unsigned attachment)
 {
    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->framebuffer);
    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
    glDrawBuffer(GL_BACK);
+   glReadBuffer(attachment);
    glBlitFramebuffer(0, 0, src->width, src->height,
                      0, 0, width, height,
                      GL_COLOR_BUFFER_BIT, GL_NEAREST);

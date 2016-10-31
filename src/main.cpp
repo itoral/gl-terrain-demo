@@ -547,10 +547,10 @@ setup_scene()
    float th = tw / TER_ASPECT_RATIO;
    TerTile *tile;
    tile = ter_tile_new(tw , th, 0.0f, TER_WIN_HEIGHT - th,
-                       water->reflection->texture);
+                       water->reflection->texture[0]);
    ter_cache_set("tile/tile-water-reflection", tile);
    tile = ter_tile_new(tw, th, tw, TER_WIN_HEIGHT - th,
-                       water->refraction->texture);
+                       water->refraction->texture[0]);
    ter_cache_set("tile/tile-water-refraction", tile);
    TerShadowMap *shadow_map =
       ter_shadow_box_get_shadow_map(shadow_renderer->shadow_box, 0);
@@ -861,7 +861,8 @@ render_result()
    }
 
    /* Render to the window */
-   ter_render_texture_blit_to_window(fbo, TER_WIN_WIDTH, TER_WIN_HEIGHT);
+   ter_render_texture_blit_to_window(fbo, TER_WIN_WIDTH, TER_WIN_HEIGHT,
+                                     GL_COLOR_ATTACHMENT0);
 }
 
 /**
