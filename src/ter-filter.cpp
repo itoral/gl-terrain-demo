@@ -199,3 +199,45 @@ ter_bloom_filter_free(TerBloomFilter *bf)
    ter_render_texture_free(bf->result_fbo);
    g_free(bf);
 }
+
+TerMotionBlurFilter *
+ter_motion_blur_filter_new()
+{
+   TerMotionBlurFilter *f = g_new0(TerMotionBlurFilter, 1);
+
+   f->result = ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT,
+                                      true, false, false, false);
+   return f;
+}
+
+TerRenderTexture *
+ter_motion_blur_filter_run(TerMotionBlurFilter *f, TerRenderTexture *src)
+{
+   static TerShaderProgramFilterMotionBlur *sh =
+      (TerShaderProgramFilterMotionBlur *) ter_cache_get("program/motion-blur");
+
+   ter_render_texture_start(f->result);
+
+   glUseProgram(sh->simple.prog.program);
+
+   glActiveTexture(GL_TEXTURE0);
+   glBindTexture(GL_TEXTURE_2D, src->texture[0]);
+   glActiveTexture(GL_TEXTURE1);
+   glBindTexture(GL_TEXTURE_2D, src->texture[1]);
+   ter_shader_program_filter_motion_blur_load(sh, 0, 1,
+                                              TER_MOTION_BLUR_DIVISOR);
+
+   ter_postprocess_bind_vao();
+   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+   ter_render_texture_stop(f->result);
+
+   return f->result;
+}
+
+void
+ter_motion_blur_filter_free(TerMotionBlurFilter *f)
+{
+   ter_render_texture_free(f->result);
+   g_free(f);
+}

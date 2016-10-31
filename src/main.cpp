@@ -48,6 +48,9 @@ TerRenderTexture *scene_fbo = NULL;
 /* Bloom filter */
 TerBloomFilter *bloom_filter = NULL;
 
+/* Motion blur filter */
+TerMotionBlurFilter *motion_blur_filter = NULL;
+
 /* Objects to load. For new object types add:
  *
  * - the enum value in TerObjectType
@@ -413,6 +416,12 @@ load_shaders()
    sh = ter_shader_program_filter_combine_new("../shaders/bloom-combine.vert",
                                               "../shaders/bloom-combine.frag");
    add_shader("program/bloom-combine", sh);
+
+   /* Motion blur */
+   sh = ter_shader_program_filter_motion_blur_new(
+      "../shaders/motion-blur.vert",
+      "../shaders/motion-blur.frag");
+   add_shader("program/motion-blur", sh);
 }
 
 static void
@@ -505,20 +514,27 @@ setup_scene()
    load_lights();
 
    /* Multi-sampled scene FBO */
+   unsigned num_color_attachments =  TER_MOTION_BLUR_FILTER_ENABLE ? 2 : 1;
    if (TER_MULTISAMPLING_SAMPLES > 1) {
       scene_ms_fbo =
          ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT,
-                                true, true, false, true);
+                                true, true, false, true,
+                                num_color_attachments);
    }
 
    /* Single-sampled scene FBO */
    scene_fbo =
       ter_render_texture_new(TER_WIN_WIDTH, TER_WIN_HEIGHT,
-                             true, scene_ms_fbo ? false : true, false, false);
+                             true, scene_ms_fbo ? false : true,
+                             false, false, num_color_attachments);
 
    /* Bloom filter */
    if (TER_BLOOM_FILTER_ENABLE)
       bloom_filter = ter_bloom_filter_new();
+
+   /* Motion blur */
+   if (TER_MOTION_BLUR_FILTER_ENABLE)
+      motion_blur_filter = ter_motion_blur_filter_new();
 
    /* Projection matrix */
    Projection = glm::perspective(DEG_TO_RAD(TER_FOV), TER_ASPECT_RATIO,
@@ -748,7 +764,7 @@ render_water_textures()
 }
 
 static void
-render_objects(bool enable_shadows)
+render_objects(bool enable_shadows, bool render_motion)
 {
    TerClipVolume clip;
    TerCamera *cam = (TerCamera *) ter_cache_get("camera/main");
@@ -759,7 +775,7 @@ render_objects(bool enable_shadows)
       true,
       enable_shadows, TER_SHADOW_PFC,
       &clip,
-      true,
+      render_motion,
       "scene objects");
 }
 
@@ -820,6 +836,29 @@ render_2d_tiles()
    glEnable(GL_DEPTH_TEST);
 }
 
+static inline void
+clear_motion_texture()
+{
+   if (TER_MOTION_BLUR_FILTER_ENABLE) {
+      /* The motion texture stores motion vectors in the range [0, 1]. Since
+       * we can have positive and negative motion, we want to represent the
+       * no-motion vector as (0.5, 0.5), so clear the motion texture to that
+       * value. We only need to cleat the motion texture, since the normal
+       * color attachment is going to be fully rendered.
+       */
+      glDrawBuffer(GL_COLOR_ATTACHMENT1);
+      glClearColor(0.5f, 0.5f, 0.0f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
+
+      /* Now enable rendering to both attachments again and reset the
+       * clear color.
+       */
+      GLenum draw_buffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+      glDrawBuffers(2, draw_buffers);
+      glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+   }
+}
+
 static void
 render_result()
 {
@@ -834,6 +873,8 @@ render_result()
 
       glClear(GL_DEPTH_BUFFER_BIT);
 
+      clear_motion_texture();
+
       if (TER_DEBUG_SHOW_BOUNDING_BOXES)
          render_bounding_boxes();
 
@@ -842,7 +883,7 @@ render_result()
        * be closer to the camera and last things that are further away and/or
        * more expensive to render.
        */
-      render_objects(true);
+      render_objects(true, TER_MOTION_BLUR_FILTER_ENABLE);
       ter_terrain_render(terrain, true);
       ter_water_tile_render(water);
       ter_skybox_render(skybox);
@@ -857,11 +898,15 @@ render_result()
 
    /* Post-processing */
    fbo = scene_fbo;
-   if (bloom_filter) {
-      glDisable(GL_DEPTH_TEST);
-      fbo = ter_bloom_filter_run(bloom_filter, scene_fbo);
-      glEnable(GL_DEPTH_TEST);
-   }
+   glDisable(GL_DEPTH_TEST);
+
+   if (motion_blur_filter)
+      fbo = ter_motion_blur_filter_run(motion_blur_filter, fbo);
+
+   if (bloom_filter)
+      fbo = ter_bloom_filter_run(bloom_filter, fbo);
+
+   glEnable(GL_DEPTH_TEST);
 
    /* Render to the window */
    ter_render_texture_blit_to_window(fbo, TER_WIN_WIDTH, TER_WIN_HEIGHT,
@@ -1092,6 +1137,8 @@ teardown()
       ter_render_texture_free(scene_fbo);
    if (bloom_filter)
       ter_bloom_filter_free(bloom_filter);
+   if (motion_blur_filter)
+      ter_motion_blur_filter_free(motion_blur_filter);
    ter_object_renderer_free(obj_renderer);
    free_obj_models();
    ter_terrain_free(terrain);

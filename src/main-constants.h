@@ -351,6 +351,21 @@ TER_SHADOW_CSM_MAP_SIZES[4] = { 1.0f, 0.75f, 0.5f, 0.0f };
 #define TER_BLOOM_LUMINANCE_FACTOR 3.0f
 
 /*
+ * Enable the motion blur filter
+ */
+#define TER_MOTION_BLUR_FILTER_ENABLE true
+
+/*
+ * Motion blur intensity divisor
+ *
+ * This divides the strength of the motion vector so that the blur effect
+ * is not too intense. The larger the value, the less intense the motion
+ * blur effect becomes. Too large values can nullify the blur effect whereas
+ * too small values can lead to artifacts. Must be > 0.
+ */
+#define TER_MOTION_BLUR_DIVISOR 8.0f
+
+/*
  * Virtual texture IDs
  */
 #define TER_TEX_TERRAIN_HEIGHTMAP_01    0

@@ -707,3 +707,28 @@ ter_shader_program_filter_combine_load(TerShaderProgramFilterCombine *p,
    glUniform1i(p->simple.texture_loc, unit0);
    glUniform1i(p->texture2_loc, unit1);
 }
+
+TerShaderProgramFilterMotionBlur *
+ter_shader_program_filter_motion_blur_new(const char *vs, const char *fs)
+{
+   unsigned programID = build_shader_program(vs, fs);
+
+   TerShaderProgramFilterMotionBlur *p =
+      g_new0(TerShaderProgramFilterMotionBlur, 1);
+   init_filter_simple(&p->simple, programID);
+
+   p->motion_texture_loc = glGetUniformLocation(programID, "MotionTex");
+   p->motion_divisor_loc = glGetUniformLocation(programID, "MotionDivisor");
+
+   return p;
+}
+
+void
+ter_shader_program_filter_motion_blur_load(TerShaderProgramFilterMotionBlur *p,
+                                           unsigned unit0, unsigned unit1,
+                                           float divisor)
+{
+   glUniform1i(p->simple.texture_loc, unit0);
+   glUniform1i(p->motion_texture_loc, unit1);
+   glUniform1f(p->motion_divisor_loc, divisor);
+}

@@ -278,4 +278,17 @@ TerShaderProgramFilterCombine *ter_shader_program_filter_combine_new(
 void ter_shader_program_filter_combine_load(
    TerShaderProgramFilterCombine *p, unsigned unit0, unsigned unit1);
 
+typedef struct {
+   TerShaderProgramFilterSimple simple;
+   unsigned motion_texture_loc;
+   unsigned motion_divisor_loc;
+} TerShaderProgramFilterMotionBlur;
+
+TerShaderProgramFilterMotionBlur *ter_shader_program_filter_motion_blur_new(
+   const char *vs, const char *fs);
+
+void ter_shader_program_filter_motion_blur_load(
+   TerShaderProgramFilterMotionBlur *p, unsigned unit0, unsigned unit1,
+   float divisor);
+
 #endif
