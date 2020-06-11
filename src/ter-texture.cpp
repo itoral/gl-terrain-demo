@@ -36,7 +36,7 @@ create_texture(SDL_Surface *image)
      glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy);
      float value = (ANISOTROPY_VALUE > max_anisotropy) ?
       max_anisotropy : ANISOTROPY_VALUE;
-     glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, value);
+     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, value);
    }
 
    return texture_id;
