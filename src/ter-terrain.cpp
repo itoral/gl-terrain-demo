@@ -441,6 +441,12 @@ size_t
 ter_terrain_update_index_buffer_for_clip_volume(TerTerrain *t,
                                                 TerClipVolume *clip)
 {
+   /* The first frame will call this before we ever bind the terrain VAO,
+    * which is when we create the index buffer.
+    */
+   if (!t->ibuf_idx)
+      terrain_bind_vao(t);
+
    compute_indices_for_clip_volume(t, clip);
 
    /* Upload the new index data */
