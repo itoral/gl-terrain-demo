@@ -365,6 +365,7 @@ terrain_prepare(TerTerrain *t, bool enable_shadows, bool render_motion)
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, tid);
+   glBindSampler(0, 0);
    ter_shader_program_terrain_load_sampler(sh, 0, 4.0);
 
    if (render_motion) {
@@ -388,6 +389,8 @@ terrain_prepare(TerTerrain *t, bool enable_shadows, bool render_motion)
          glActiveTexture(GL_TEXTURE1 + level);
          glBindTexture(GL_TEXTURE_2D,
                        sr->shadow_box->csm[level].shadow_map->map->depth_texture);
+         glBindSampler(1 + level,
+                       sr->shadow_box->csm[level].shadow_map->map->depth_sampler);
       }
       ter_shader_program_shadow_data_load_(&sh->shadow, sr, 1);
    }

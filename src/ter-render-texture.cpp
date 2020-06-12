@@ -29,17 +29,18 @@ ter_render_texture_new(int width, int height,
 
    /* Color attachments */
    glGenTextures(num_color_attachments, rt->texture);
+   glGenSamplers(num_color_attachments, rt->sampler);
    for (unsigned i = 0; i < num_color_attachments; i++) {
       int attachment = GL_COLOR_ATTACHMENT0 + i;
       if (!rt->is_multisampled) {
          glBindTexture(GL_TEXTURE_2D, rt->texture[i]);
          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
                       0, GL_RGBA, GL_FLOAT, 0);
-         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+         glSamplerParameteri(rt->sampler[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+         glSamplerParameteri(rt->sampler[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR);
          if (clamp_to_edge) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(rt->sampler[i], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(rt->sampler[i], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
          }
          glFramebufferTexture2D(GL_FRAMEBUFFER, attachment,
                                 GL_TEXTURE_2D, rt->texture[i], 0);
@@ -49,10 +50,10 @@ ter_render_texture_new(int width, int height,
                                  TER_MULTISAMPLING_SAMPLES,
                                  GL_RGBA8, width, height, true);
          if (clamp_to_edge) {
-            glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE,
-                            GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE,
-                            GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(rt->sampler[i],
+                                GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(rt->sampler[i],
+                                GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
          }
          glFramebufferTexture2D(GL_FRAMEBUFFER, attachment,
                                 GL_TEXTURE_2D_MULTISAMPLE, rt->texture[i], 0);
@@ -76,14 +77,15 @@ ter_render_texture_new(int width, int height,
                                   GL_RENDERBUFFER, rt->depthbuffer);
       } else {
          glGenTextures(1, &rt->depth_texture);
+         glGenSamplers(1, &rt->depth_sampler);
          glBindTexture(GL_TEXTURE_2D, rt->depth_texture);
          glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0,
                       GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+         glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+         glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
          if (clamp_to_edge) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
          }
          glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                               rt->depth_texture, 0);
@@ -114,20 +116,21 @@ ter_render_depth_texture_new(int width, int height, bool is_shadow)
    glDrawBuffer(GL_NONE);
 
    glGenTextures(1, &rt->depth_texture);
+   glGenSamplers(1, &rt->depth_sampler);
    glBindTexture(GL_TEXTURE_2D, rt->depth_texture);
    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0,
                 GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+   glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_MAG_FILTER,
       is_shadow ? GL_LINEAR : GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+   glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_MIN_FILTER,
          is_shadow ? GL_LINEAR : GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+   glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+   glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
    if (is_shadow) {
-	   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
+	   glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_COMPARE_MODE,
 	                   GL_COMPARE_R_TO_TEXTURE);
-	   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_GREATER);
+	   glSamplerParameteri(rt->depth_sampler, GL_TEXTURE_COMPARE_FUNC, GL_GREATER);
    }
 
    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
@@ -151,9 +154,12 @@ ter_render_texture_free(TerRenderTexture *rt)
    glDeleteFramebuffers(1, &rt->framebuffer);
    for (unsigned i = 0; i < rt->num_color_textures; i++) {
       glDeleteTextures(1, &rt->texture[i]);
+      glDeleteSamplers(1, &rt->sampler[i]);
    }
-   if (rt->depth_texture)
+   if (rt->depth_texture) {
       glDeleteTextures(1, &rt->depth_texture);
+      glDeleteSamplers(1, &rt->depth_sampler);
+   }
    if (rt->depthbuffer)
       glDeleteRenderbuffers(1, &rt->depthbuffer);
    g_free(rt);

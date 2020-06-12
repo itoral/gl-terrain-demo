@@ -9,10 +9,12 @@ typedef struct {
    int prev_viewport[4];
    unsigned framebuffer;
    unsigned texture[4];
+   unsigned sampler[4];
    unsigned num_color_textures;
    bool has_depth;
    unsigned depthbuffer;
    unsigned depth_texture;
+   unsigned depth_sampler;
    bool is_multisampled;
 } TerRenderTexture;
 

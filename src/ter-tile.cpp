@@ -27,7 +27,7 @@ set_vertices_and_uvs(TerTile *t, unsigned width, unsigned height)
 
 TerTile *
 ter_tile_new(unsigned width, unsigned height, float x, float y,
-             unsigned texture)
+             unsigned texture, unsigned sampler)
 {
    TerTile *t = g_new0(TerTile, 1);
    t->width = width;
@@ -38,6 +38,7 @@ ter_tile_new(unsigned width, unsigned height, float x, float y,
    t->pos = glm::vec3(x, y, 0.0f);
    t->scale = glm::vec3(1.0f, 1.0f, 1.0f);
    t->texture = texture;
+   t->sampler = sampler;
 
    return t;
 }
@@ -107,6 +108,7 @@ ter_tile_render(TerTile *tile)
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, tile->texture);
+   glBindSampler(0, tile->sampler);
    ter_shader_program_tile_load_texture(sh, 0);
 
    tile_bind_vao(tile);

@@ -183,14 +183,19 @@ ter_water_tile_render(TerWaterTile *t, bool render_motion)
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, t->reflection->texture[0]);
+   glBindSampler(0, t->reflection->sampler[0]);
    glActiveTexture(GL_TEXTURE1);
    glBindTexture(GL_TEXTURE_2D, t->refraction->texture[0]);
+   glBindSampler(1, t->refraction->sampler[0]);
    glActiveTexture(GL_TEXTURE2);
    glBindTexture(GL_TEXTURE_2D, t->dudv_tex);
+   glBindSampler(2, 0);
    glActiveTexture(GL_TEXTURE3);
    glBindTexture(GL_TEXTURE_2D, t->normal_tex);
+   glBindSampler(3, 0);
    glActiveTexture(GL_TEXTURE4);
    glBindTexture(GL_TEXTURE_2D, t->refraction->depth_texture);
+   glBindSampler(4, t->refraction->depth_sampler);
    ter_shader_program_water_load_textures(sh, 0, 1, 2, 3, 4);
 
    TerShadowRenderer *sr =
@@ -199,6 +204,8 @@ ter_water_tile_render(TerWaterTile *t, bool render_motion)
       glActiveTexture(GL_TEXTURE5 + level);
       glBindTexture(GL_TEXTURE_2D,
                     sr->shadow_box->csm[level].shadow_map->map->depth_texture);
+      glBindSampler(5 + level,
+                    sr->shadow_box->csm[level].shadow_map->map->depth_sampler);
    }
    ter_shader_program_shadow_data_load_(&sh->shadow, sr, 5);
 

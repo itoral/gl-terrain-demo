@@ -14,6 +14,7 @@ typedef struct {
    glm::vec3 rot;
    glm::vec3 scale;
    unsigned texture;
+   unsigned sampler;
 
    unsigned vao;
    unsigned vertex_buf;
@@ -21,7 +22,7 @@ typedef struct {
 } TerTile;
 
 TerTile *ter_tile_new(unsigned width, unsigned height, float x, float y,
-                      unsigned texture);
+                      unsigned texture, unsigned sampler);
 void ter_tile_render(TerTile *tile);
 
 #endif

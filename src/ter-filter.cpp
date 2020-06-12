@@ -93,16 +93,17 @@ ter_postprocess_bind_vao()
 }
 
 static void
-ter_filter_simple_render(unsigned src_tex, TerShaderProgramFilterSimple *sh)
+ter_filter_simple_render(unsigned src_tex, unsigned src_sam, TerShaderProgramFilterSimple *sh)
  __attribute__ ((unused));
 
 static void
-ter_filter_simple_render(unsigned src_tex, TerShaderProgramFilterSimple *sh)
+ter_filter_simple_render(unsigned src_tex, unsigned src_sam, TerShaderProgramFilterSimple *sh)
 {
    glUseProgram(sh->prog.program);
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, src_tex);
+   glBindSampler(0, src_sam);
    ter_shader_program_filter_simple_load(sh, 0);
 
    ter_postprocess_bind_vao();
@@ -110,13 +111,14 @@ ter_filter_simple_render(unsigned src_tex, TerShaderProgramFilterSimple *sh)
 }
 
 static void
-ter_filter_brightness_select_render(unsigned src_tex, float lum_factor,
+ter_filter_brightness_select_render(unsigned src_tex, unsigned src_sam, float lum_factor,
                                     TerShaderProgramFilterBrightnessSelect *sh)
 {
    glUseProgram(sh->simple.prog.program);
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, src_tex);
+   glBindSampler(0, src_sam);
    ter_shader_program_filter_brightness_select_load(sh, 0, lum_factor);
 
    ter_postprocess_bind_vao();
@@ -124,13 +126,14 @@ ter_filter_brightness_select_render(unsigned src_tex, float lum_factor,
 }
 
 static void
-ter_filter_blur_render(unsigned src_tex, unsigned dim,
+ter_filter_blur_render(unsigned src_tex, unsigned src_sam, unsigned dim,
                        TerShaderProgramFilterBlur *sh)
 {
    glUseProgram(sh->simple.prog.program);
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, src_tex);
+   glBindSampler(0, src_sam);
    ter_shader_program_filter_blur_load(sh, 0, dim);
 
    ter_postprocess_bind_vao();
@@ -138,15 +141,18 @@ ter_filter_blur_render(unsigned src_tex, unsigned dim,
 }
 
 static void
-ter_filter_combine_render(unsigned src1_tex, unsigned src2_tex,
+ter_filter_combine_render(unsigned src1_tex, unsigned src1_sam,
+                          unsigned src2_tex, unsigned src2_sam,
                           TerShaderProgramFilterCombine *sh)
 {
    glUseProgram(sh->simple.prog.program);
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, src1_tex);
+   glBindSampler(0, src1_sam);
    glActiveTexture(GL_TEXTURE1);
    glBindTexture(GL_TEXTURE_2D, src2_tex);
+   glBindSampler(1, src2_sam);
    ter_shader_program_filter_combine_load(sh, 0, 1);
 
    ter_postprocess_bind_vao();
@@ -168,22 +174,28 @@ ter_bloom_filter_run(TerBloomFilter *bf, TerRenderTexture *src)
 
    ter_render_texture_start(bf->brightness_fbo);
    ter_filter_brightness_select_render(src->texture[0],
+                                       src->sampler[0],
                                        TER_BLOOM_LUMINANCE_FACTOR,
                                        sh_brightness);
    ter_render_texture_stop(bf->brightness_fbo);
 
    ter_render_texture_start(bf->hblur_fbo);
-   ter_filter_blur_render(bf->brightness_fbo->texture[0], bf->hblur_fbo->width,
+   ter_filter_blur_render(bf->brightness_fbo->texture[0],
+                          bf->brightness_fbo->sampler[0],
+                          bf->hblur_fbo->width,
                           sh_hblur);
    ter_render_texture_stop(bf->hblur_fbo);
 
    ter_render_texture_start(bf->vblur_fbo);
-   ter_filter_blur_render(bf->hblur_fbo->texture[0], bf->vblur_fbo->height,
+   ter_filter_blur_render(bf->hblur_fbo->texture[0],
+                          bf->hblur_fbo->sampler[0],
+                          bf->vblur_fbo->height,
                           sh_vblur);
    ter_render_texture_stop(bf->vblur_fbo);
 
    ter_render_texture_start(bf->result_fbo);
-   ter_filter_combine_render(src->texture[0], bf->vblur_fbo->texture[0],
+   ter_filter_combine_render(src->texture[0], src->sampler[0],
+                             bf->vblur_fbo->texture[0], bf->vblur_fbo->sampler[0],
                              sh_combine);
    ter_render_texture_stop(bf->result_fbo);
 
@@ -222,8 +234,10 @@ ter_motion_blur_filter_run(TerMotionBlurFilter *f, TerRenderTexture *src)
 
    glActiveTexture(GL_TEXTURE0);
    glBindTexture(GL_TEXTURE_2D, src->texture[0]);
+   glBindSampler(0, src->sampler[0]);
    glActiveTexture(GL_TEXTURE1);
    glBindTexture(GL_TEXTURE_2D, src->texture[1]);
+   glBindSampler(1, src->sampler[1]);
    ter_shader_program_filter_motion_blur_load(sh, 0, 1,
                                               TER_MOTION_BLUR_DIVISOR);
 
